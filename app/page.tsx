@@ -267,8 +267,8 @@ export default function Home() {
                 price = data.fund.price;
               }
               
-              // 評価額計算
-              const value = numericPrice * stock.shares;
+              // 評価額計算 - 投資信託は基準価額×口数÷10000で計算
+              const value = numericPrice * stock.shares / 10000;
               
               updatedList[i] = {
                 ...stock,
@@ -294,68 +294,44 @@ export default function Home() {
             const data = await response.json();
             
             if (response.ok) {
-              // 株価を取得
+              // 価格情報を取得
               let price = '';
               let numericPrice = 0;
               let priceInJPY = '';
               
-              // 米国株の場合はGoogleファイナンスの株価を優先的に使用
-              if (data.currency === 'USD' && data.google.numericPrice > 0) {
-                numericPrice = data.google.numericPrice;
-                price = data.google.price;
-                
-                // 価格が重複している場合は最初の価格のみを使用
-                if (price && price.includes('$') && price.indexOf('$', price.indexOf('$') + 1) > 0) {
-                  const match = price.match(/\$[\d.,]+/);
-                  if (match) {
-                    price = match[0];
-                  }
+              // 日本株の場合はGoogle Financeのデータを優先
+              if (isNumericCode && data.google && data.google.price) {
+                // Google Financeからの価格を使用
+                const googlePrice = data.google.price.replace('¥', '').replace(',', '').split('.')[0];
+                if (googlePrice) {
+                  numericPrice = parseFloat(googlePrice);
+                  price = `${numericPrice.toLocaleString()}円`;
+                  console.log(`Google Financeから取得した価格を使用: ${price}`);
                 }
-              } 
-              // 日本株またはGoogleで取得できなかった場合はYahoo!の株価を使用
-              else if (data.yahoo.numericPrice > 0) {
+              }
+              
+              // Google Financeからデータが取得できなかった場合はYahoo!ファイナンスのデータを使用
+              if (numericPrice === 0 && data.yahoo && data.yahoo.numericPrice > 0) {
                 numericPrice = data.yahoo.numericPrice;
                 price = data.yahoo.price;
-                
-                // 価格が重複している場合は最初の価格のみを使用
-                if (price && price.includes('$') && price.indexOf('$', price.indexOf('$') + 1) > 0) {
-                  const match = price.match(/\$[\d.,]+/);
-                  if (match) {
-                    price = match[0];
-                  }
-                }
-              } 
-              // Yahoo!で取得できなかった場合はGoogleの株価を使用（日本株の場合）
-              else if (data.google.numericPrice > 0) {
-                numericPrice = data.google.numericPrice;
-                price = data.google.price;
-                
-                // 価格が重複している場合は最初の価格のみを使用
-                if (price && price.includes('$') && price.indexOf('$', price.indexOf('$') + 1) > 0) {
-                  const match = price.match(/\$[\d.,]+/);
-                  if (match) {
-                    price = match[0];
-                  }
-                }
+                console.log(`Yahoo!ファイナンスから取得した価格を使用: ${price}`);
               }
               
               // 通貨に応じた評価額計算
               let value = 0;
-              let country: 'JP' | 'US' = stock.country; // 元の国の区分を保持
               
-              if (data.currency === 'USD') {
+              // 米国株の場合
+              if (isUS) {
                 // 米国株の場合は円換算
                 value = numericPrice * stock.shares * exchangeRate;
                 priceInJPY = numericPrice > 0 ? `${numericPrice.toLocaleString()} ドル (${(numericPrice * exchangeRate).toLocaleString()} 円)` : '未取得';
-                // country = 'US'; // 米国株の場合でも国の区分は更新しない
               } else {
                 // 日本株の場合はそのまま
                 value = numericPrice * stock.shares;
                 priceInJPY = '';
-                // country = 'JP'; // 日本株の場合でも国の区分は更新しない
               }
               
-              console.log(`${stock.code}の通貨: ${data.currency}, 国の区分: ${country}, 評価額: ${value}円`);
+              console.log(`${stock.code}の通貨: ${data.currency}, 国の区分: ${stock.country}, 評価額: ${value}円`);
               
               updatedList[i] = {
                 ...stock,
@@ -365,7 +341,7 @@ export default function Home() {
                 currency: data.currency,
                 lastUpdated: new Date().toLocaleString(),
                 type: originalType, // 元の種別を明示的に保持
-                country: country // 通貨に基づいて国の区分を設定
+                country: stock.country // 通貨に基づいて国の区分を設定
               };
             }
           }
