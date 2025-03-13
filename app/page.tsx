@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
@@ -34,16 +34,24 @@ import { APP_VERSION } from './version';
 
 export default function Home() {
   const [stockCode, setStockCode] = useState('');
-  const [shares, setShares] = useState<string>('');
+  const [stockName, setStockName] = useState('');
+  const [shares, setShares] = useState('');
+  const [stockList, setStockList] = useState<StockItem[]>([]);
   const [stockData, setStockData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [exchangeRate, setExchangeRate] = useState(150); // デフォルト値: 150円/ドル
-  const [autoRefresh, setAutoRefresh] = useState(true); // デフォルトで自動更新ON
-  const [refreshInterval, setRefreshInterval] = useState<number>(600000); // デフォルトは10分
-  const [isUSStock, setIsUSStock] = useState(false); // 米国株かどうかのフラグ
-  const [isFund, setIsFund] = useState(false); // 投資信託かどうかのフラグ
-  const [country, setCountry] = useState<'JP' | 'US'>('JP'); // 国の区分
+  const [loading, setLoading] = useState(false);
+  const [totalValue, setTotalValue] = useState(0);
+  const [totalJpValue, setTotalJpValue] = useState(0);
+  const [totalUsValue, setTotalUsValue] = useState(0);
+  const [exchangeRate, setExchangeRate] = useState(150);
+  const [lastUpdatedTime, setLastUpdatedTime] = useState('');
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [refreshInterval, setRefreshInterval] = useState(300000); // デフォルト5分
+  const [sortConfig, setSortConfig] = useState<{ key: keyof StockItem; direction: string } | null>(null);
+  const [targetRatio, setTargetRatio] = useState(50); // デフォルト50%
+  const [stockType, setStockType] = useState<'stock' | 'fund'>('stock');
+  const [country, setCountry] = useState<'JP' | 'US'>('JP');
+  const lastImportedStocksRef = useRef<StockItem[]>([]);
   
   // 保有株式リスト
   const [stockList, setStockList] = useState<StockItem[]>([]);
@@ -379,6 +387,35 @@ export default function Home() {
       // 更新前後でデータ件数を比較（デバッグ用）
       console.log(`更新前: ${currentStockList.length}件, 更新後: ${updatedList.length}件`);
       
+      // 最後にインポートしたデータがある場合、それが失われていないか確認
+      if (lastImportedStocksRef.current.length > 0) {
+        console.log('最後にインポートしたデータを確認:', lastImportedStocksRef.current.length + '件');
+        
+        // インポートしたデータのコードリスト
+        const importedCodes = lastImportedStocksRef.current.map(stock => stock.code);
+        
+        // 更新後のリストにインポートしたデータが含まれているか確認
+        const missingCodes = importedCodes.filter(code => 
+          !updatedList.some(stock => stock.code === code)
+        );
+        
+        if (missingCodes.length > 0) {
+          console.warn('株価更新後に失われたデータがあります:', missingCodes);
+          
+          // 失われたデータを復元
+          const missingStocks = lastImportedStocksRef.current.filter(stock => 
+            missingCodes.includes(stock.code)
+          );
+          
+          console.log('復元するデータ:', missingStocks);
+          
+          // 復元したデータを追加
+          updatedList.push(...missingStocks);
+          
+          console.log('データ復元後の件数:', updatedList.length + '件');
+        }
+      }
+      
       // 株式リストを更新
       setStockList(updatedList);
       
@@ -643,7 +680,7 @@ export default function Home() {
     let direction: 'ascending' | 'descending' = 'ascending';
     
     // 同じキーでソートする場合は方向を反転
-    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+    if (sortConfig?.key === key && sortConfig?.direction === 'ascending') {
       direction = 'descending';
     }
     
@@ -652,7 +689,7 @@ export default function Home() {
 
   // ソート済みの株式リストを取得
   const getSortedStockList = () => {
-    if (!sortConfig.key) {
+    if (!sortConfig?.key) {
       return stockList;
     }
     
@@ -733,6 +770,7 @@ export default function Home() {
               currency: stock.currency || 'JPY',
               type: stock.type || 'stock',
               lastUpdated: new Date().toLocaleString(), // 最終更新時刻を追加
+              importedAt: new Date().getTime(), // インポート時刻を追加（タイムスタンプ）
               ...stock // その他のプロパティを保持
             };
           });
@@ -750,6 +788,10 @@ export default function Home() {
           // ローカルストレージに直接保存（useEffectを待たない）
           localStorage.setItem('stockList', JSON.stringify(updatedStockList));
           console.log('インポートデータをローカルストレージに直接保存しました:', updatedStockList.length + '件');
+          
+          // インポートされたデータをrefに保存（株価更新後の復元用）
+          lastImportedStocksRef.current = [...processedNewStocks];
+          console.log('最後にインポートされたデータをrefに保存:', processedNewStocks.length + '件');
           
           alert(`${processedNewStocks.length}件の銘柄データをインポートしました。`);
           
@@ -1333,9 +1375,9 @@ export default function Home() {
                       >
                         <div className="flex items-center">
                           銘柄コード
-                          {sortConfig.key === 'code' && (
+                          {sortConfig?.key === 'code' && (
                             <span className="ml-1">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                              {sortConfig?.direction === 'ascending' ? '↑' : '↓'}
                             </span>
                           )}
                         </div>
@@ -1347,9 +1389,9 @@ export default function Home() {
                       >
                         <div className="flex items-center">
                           銘柄名
-                          {sortConfig.key === 'name' && (
+                          {sortConfig?.key === 'name' && (
                             <span className="ml-1">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                              {sortConfig?.direction === 'ascending' ? '↑' : '↓'}
                             </span>
                           )}
                         </div>
@@ -1361,9 +1403,9 @@ export default function Home() {
                       >
                         <div className="flex items-center justify-end">
                           現在値
-                          {sortConfig.key === 'price' && (
+                          {sortConfig?.key === 'price' && (
                             <span className="ml-1">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                              {sortConfig?.direction === 'ascending' ? '↑' : '↓'}
                             </span>
                           )}
                         </div>
@@ -1375,9 +1417,9 @@ export default function Home() {
                       >
                         <div className="flex items-center">
                           所有数
-                          {sortConfig.key === 'shares' && (
+                          {sortConfig?.key === 'shares' && (
                             <span className="ml-1">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                              {sortConfig?.direction === 'ascending' ? '↑' : '↓'}
                             </span>
                           )}
                         </div>
@@ -1389,9 +1431,9 @@ export default function Home() {
                       >
                         <div className="flex items-center justify-end">
                           評価額
-                          {sortConfig.key === 'value' && (
+                          {sortConfig?.key === 'value' && (
                             <span className="ml-1">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                              {sortConfig?.direction === 'ascending' ? '↑' : '↓'}
                             </span>
                           )}
                         </div>
@@ -1403,9 +1445,9 @@ export default function Home() {
                       >
                         <div className="flex items-center">
                           投資国
-                          {sortConfig.key === 'country' && (
+                          {sortConfig?.key === 'country' && (
                             <span className="ml-1">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                              {sortConfig?.direction === 'ascending' ? '↑' : '↓'}
                             </span>
                           )}
                         </div>
