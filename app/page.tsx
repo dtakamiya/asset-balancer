@@ -213,6 +213,7 @@ export default function Home() {
       console.log(`${stock.code}: 種別=${stock.type}, 国=${stock.country}, 通貨=${stock.currency}, 評価額=${stock.value || 0}円`);
       
       if (stock.value) {
+        // 投資国と種別に基づいて分類
         if (stock.type === 'fund') {
           if (stock.country === 'US') {
             usFundTotal += stock.value;
@@ -221,12 +222,14 @@ export default function Home() {
             jpFundTotal += stock.value;
             console.log(`  → 日本投資信託に加算: ${stock.value}円`);
           }
-        } else if (stock.country === 'US') {
-          usTotal += stock.value;
-          console.log(`  → 米国株に加算: ${stock.value}円`);
-        } else {
-          jpTotal += stock.value;
-          console.log(`  → 日本株に加算: ${stock.value}円`);
+        } else { // 株式の場合
+          if (stock.country === 'US') {
+            usTotal += stock.value;
+            console.log(`  → 米国株に加算: ${stock.value}円`);
+          } else {
+            jpTotal += stock.value;
+            console.log(`  → 日本株に加算: ${stock.value}円`);
+          }
         }
       }
     });
