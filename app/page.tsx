@@ -712,14 +712,14 @@ export default function Home() {
     
     if (Array.isArray(importedData) && importedData.length > 0) {
       try {
-        // データの検証
+        // データの検証（より緩やかな検証に変更）
         const validStocks = importedData.filter(stock => 
           stock && 
           typeof stock === 'object' && 
-          stock.id && 
-          stock.code && 
-          stock.name
+          stock.code // コードさえあれば有効とする
         );
+        
+        console.log('有効な銘柄データ:', validStocks);
         
         if (validStocks.length === 0) {
           alert('有効な銘柄データが見つかりませんでした。');
@@ -730,15 +730,33 @@ export default function Home() {
         const existingCodes = stockList.map(stock => stock.code);
         const newStocks = validStocks.filter(stock => !existingCodes.includes(stock.code));
         
+        console.log('追加される銘柄データ:', newStocks);
+        
         if (newStocks.length > 0) {
-          // 新しいデータを追加
-          const updatedStockList = [...stockList, ...newStocks];
+          // 新しいデータを追加（必要なプロパティを確保）
+          const processedNewStocks = newStocks.map(stock => {
+            // 必須プロパティが欠けている場合はデフォルト値を設定
+            return {
+              id: stock.id || uuidv4(),
+              code: stock.code,
+              name: stock.name || `銘柄 ${stock.code}`,
+              shares: stock.shares || 0,
+              price: stock.price || 0,
+              value: stock.value || 0,
+              country: stock.country || 'JP',
+              currency: stock.currency || 'JPY',
+              type: stock.type || 'stock',
+              ...stock // その他のプロパティを保持
+            };
+          });
+          
+          const updatedStockList = [...stockList, ...processedNewStocks];
           setStockList(updatedStockList);
           
           // ローカルストレージに保存
           localStorage.setItem('stockList', JSON.stringify(updatedStockList));
           
-          alert(`${newStocks.length}件の銘柄データをインポートしました。`);
+          alert(`${processedNewStocks.length}件の銘柄データをインポートしました。`);
           
           // 価格情報を更新
           setTimeout(() => {

@@ -29,8 +29,27 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
 
   // データをチャンクに分割（QRコードの容量制限のため）
   const prepareDataForExport = () => {
-    const data = JSON.stringify(stockListRef.current);
+    // 転送するデータを準備（必要な情報のみを含める）
+    const exportData = stockListRef.current.map(stock => ({
+      id: stock.id,
+      code: stock.code,
+      name: stock.name,
+      shares: stock.shares,
+      price: stock.price,
+      value: stock.value,
+      country: stock.country,
+      currency: stock.currency,
+      type: stock.type,
+      // 投資信託の場合は追加情報を含める
+      ...(stock.type === 'fund' ? {
+        expenseRatio: stock.expenseRatio,
+        category: stock.category
+      } : {})
+    }));
+    
+    const data = JSON.stringify(exportData);
     console.log('エクスポートするデータ:', data);
+    console.log('データサイズ:', data.length, '文字');
     
     // QRコードの容量制限を考慮して、データを1000文字ずつに分割
     const chunkSize = 1000;
@@ -63,7 +82,25 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
     
     setChunks({ ...chunks, current: newCurrent });
     
-    const data = JSON.stringify(stockListRef.current);
+    // 転送するデータを準備（prepareDataForExportと同じ処理）
+    const exportData = stockListRef.current.map(stock => ({
+      id: stock.id,
+      code: stock.code,
+      name: stock.name,
+      shares: stock.shares,
+      price: stock.price,
+      value: stock.value,
+      country: stock.country,
+      currency: stock.currency,
+      type: stock.type,
+      // 投資信託の場合は追加情報を含める
+      ...(stock.type === 'fund' ? {
+        expenseRatio: stock.expenseRatio,
+        category: stock.category
+      } : {})
+    }));
+    
+    const data = JSON.stringify(exportData);
     const chunkSize = 1000;
     const start = (newCurrent - 1) * chunkSize;
     const end = Math.min(start + chunkSize, data.length);
@@ -172,6 +209,13 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
               
               // データが配列であることを確認
               if (Array.isArray(importedData)) {
+                // データの種類ごとにログを出力
+                const stockTypes = importedData.reduce((acc, item) => {
+                  acc[item.type || 'unknown'] = (acc[item.type || 'unknown'] || 0) + 1;
+                  return acc;
+                }, {});
+                console.log('データ種類別カウント:', stockTypes);
+                
                 onImport(importedData);
                 setScanResult('データのインポートに成功しました！');
                 stopScan();
