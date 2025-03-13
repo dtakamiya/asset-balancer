@@ -370,18 +370,18 @@ export default function Home() {
               
               // 通貨に応じた評価額計算
               let value = 0;
-              let country: 'JP' | 'US' = 'JP';
+              let country: 'JP' | 'US' = stock.country; // 元の国の区分を保持
               
               if (data.currency === 'USD') {
                 // 米国株の場合は円換算
                 value = numericPrice * stock.shares * exchangeRate;
                 priceInJPY = numericPrice > 0 ? `${numericPrice.toLocaleString()} ドル (${(numericPrice * exchangeRate).toLocaleString()} 円)` : '未取得';
-                country = 'US'; // 米国株の場合は国の区分を'US'に設定
+                // country = 'US'; // 米国株の場合でも国の区分は更新しない
               } else {
                 // 日本株の場合はそのまま
                 value = numericPrice * stock.shares;
                 priceInJPY = '';
-                country = 'JP'; // 日本株の場合は国の区分を'JP'に設定
+                // country = 'JP'; // 日本株の場合でも国の区分は更新しない
               }
               
               console.log(`${stock.code}の通貨: ${data.currency}, 国の区分: ${country}, 評価額: ${value}円`);
@@ -632,6 +632,31 @@ export default function Home() {
                 </div>
               </div>
               
+              {/* 投資国選択 */}
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">投資国:</span>
+                <div className="flex items-center space-x-4">
+                  <label className="inline-flex items-center">
+                    <input
+                      type="radio"
+                      className="form-radio h-4 w-4 text-blue-600"
+                      checked={country === 'JP'}
+                      onChange={() => setCountry('JP')}
+                    />
+                    <span className="ml-2">日本</span>
+                  </label>
+                  <label className="inline-flex items-center">
+                    <input
+                      type="radio"
+                      className="form-radio h-4 w-4 text-blue-600"
+                      checked={country === 'US'}
+                      onChange={() => setCountry('US')}
+                    />
+                    <span className="ml-2">米国</span>
+                  </label>
+                </div>
+              </div>
+              
               {/* 投資信託の場合は国の選択肢を表示 */}
               {isFund && (
                 <div className="flex items-center justify-between mb-2">
@@ -779,6 +804,7 @@ export default function Home() {
                     <tr className="bg-gray-100 dark:bg-gray-800">
                       <th className="px-4 py-2 text-left">コード</th>
                       <th className="px-4 py-2 text-left">種別</th>
+                      <th className="px-4 py-2 text-left">投資国</th>
                       <th className="px-4 py-2 text-left">名前</th>
                       <th className="px-4 py-2 text-right">所有数/口数</th>
                       <th className="px-4 py-2 text-right">価格</th>
@@ -800,11 +826,11 @@ export default function Home() {
                               <span className="text-blue-600">米国株</span> : 
                               <span>日本株</span>
                           }
-                          {stock.type === 'fund' && (
-                            <span className="ml-1 text-xs">
-                              {stock.country === 'US' ? '(米国)' : '(日本)'}
-                            </span>
-                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={stock.country === 'US' ? 'text-blue-600' : 'text-red-600'}>
+                            {stock.country === 'US' ? '米国' : '日本'}
+                          </span>
                         </td>
                         <td className="px-4 py-3">
                           {stock.name || '-'}
