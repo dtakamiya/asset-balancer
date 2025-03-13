@@ -36,44 +36,38 @@ export default function Home() {
   const [stockCode, setStockCode] = useState('');
   const [stockName, setStockName] = useState('');
   const [shares, setShares] = useState('');
+  // 保有株式リスト
   const [stockList, setStockList] = useState<StockItem[]>([]);
   const [stockData, setStockData] = useState<any>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [totalValue, setTotalValue] = useState(0);
-  const [totalJpValue, setTotalJpValue] = useState(0);
-  const [totalUsValue, setTotalUsValue] = useState(0);
-  const [exchangeRate, setExchangeRate] = useState(150);
-  const [lastUpdatedTime, setLastUpdatedTime] = useState('');
-  const [autoRefresh, setAutoRefresh] = useState(false);
-  const [refreshInterval, setRefreshInterval] = useState(300000); // デフォルト5分
-  const [sortConfig, setSortConfig] = useState<{ key: keyof StockItem; direction: string } | null>(null);
-  const [targetRatio, setTargetRatio] = useState(50); // デフォルト50%
-  const [stockType, setStockType] = useState<'stock' | 'fund'>('stock');
-  const [country, setCountry] = useState<'JP' | 'US'>('JP');
-  const lastImportedStocksRef = useRef<StockItem[]>([]);
-  
-  // 保有株式リスト
-  const [stockList, setStockList] = useState<StockItem[]>([]);
   // 合計評価額
   const [totalValue, setTotalValue] = useState(0);
   // 日本と米国の合計投資額
   const [totalJpValue, setTotalJpValue] = useState(0);
   const [totalUsValue, setTotalUsValue] = useState(0);
-  // リバランス情報
-  const [targetRatio, setTargetRatio] = useState(50); // 目標比率（デフォルト50%）
-  // 編集中の所有数
-  const [editingShares, setEditingShares] = useState<{[key: string]: string}>({});
-  // 最近更新された株式ID
-  const [recentlyUpdated, setRecentlyUpdated] = useState<string | null>(null);
+  const [exchangeRate, setExchangeRate] = useState(150);
   // 最終更新時刻
   const [lastUpdatedTime, setLastUpdatedTime] = useState<string>('');
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [refreshInterval, setRefreshInterval] = useState(300000); // デフォルト5分
   // ソート設定
   const [sortConfig, setSortConfig] = useState<{key: keyof StockItem | ''; direction: 'ascending' | 'descending' | ''}>({
     key: '',
     direction: ''
   });
-
+  // リバランス情報
+  const [targetRatio, setTargetRatio] = useState(50); // 目標比率（デフォルト50%）
+  const [stockType, setStockType] = useState<'stock' | 'fund'>('stock');
+  const [country, setCountry] = useState<'JP' | 'US'>('JP');
+  const [isFund, setIsFund] = useState(false);
+  const [isUSStock, setIsUSStock] = useState(false);
+  const lastImportedStocksRef = useRef<StockItem[]>([]);
+  // 編集中の所有数
+  const [editingShares, setEditingShares] = useState<{[key: string]: string}>({});
+  // 最近更新された株式ID
+  const [recentlyUpdated, setRecentlyUpdated] = useState<string | null>(null);
+  
   // データ転送モーダルの状態
   const [isDataTransferModalOpen, setIsDataTransferModalOpen] = useState(false);
 
@@ -396,14 +390,14 @@ export default function Home() {
         
         // 更新後のリストにインポートしたデータが含まれているか確認
         const missingCodes = importedCodes.filter(code => 
-          !updatedList.some(stock => stock.code === code)
+          !updatedList.some((stock: StockItem) => stock.code === code)
         );
         
         if (missingCodes.length > 0) {
           console.warn('株価更新後に失われたデータがあります:', missingCodes);
           
           // 失われたデータを復元
-          const missingStocks = lastImportedStocksRef.current.filter(stock => 
+          const missingStocks = lastImportedStocksRef.current.filter((stock: StockItem) => 
             missingCodes.includes(stock.code)
           );
           
