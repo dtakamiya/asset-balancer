@@ -945,15 +945,15 @@ export default function Home() {
                                   <p className="text-green-600 dark:text-green-400">現在のポートフォリオは目標比率に近いため、リバランス不要です。</p>
                                 ) : (
                                   <div>
-                                    {jpDifference > 10000 ? (
+                                    {totalJpValue < totalUsValue ? (
                                       <p className="mb-2 text-gray-900 dark:text-white">
-                                        <span className="font-semibold text-blue-600 dark:text-blue-400">日本投資を{Math.abs(Math.round(jpDifference)).toLocaleString()}円分追加</span>してください。
+                                        <span className="font-semibold text-blue-600 dark:text-blue-400">日本投資を{Math.abs(Math.round(totalUsValue - totalJpValue)).toLocaleString()}円分追加</span>してください。
                                       </p>
-                                    ) : jpDifference < -10000 ? (
+                                    ) : (
                                       <p className="mb-2 text-gray-900 dark:text-white">
-                                        <span className="font-semibold text-blue-600 dark:text-blue-400">米国投資を{Math.abs(Math.round(usDifference)).toLocaleString()}円分追加</span>してください。
+                                        <span className="font-semibold text-blue-600 dark:text-blue-400">米国投資を{Math.abs(Math.round(totalJpValue - totalUsValue)).toLocaleString()}円分追加</span>してください。
                                       </p>
-                                    ) : null}
+                                    )}
                                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                                       ※ 売却せずに不足分を購入することでリバランスを行います。
                                     </p>
