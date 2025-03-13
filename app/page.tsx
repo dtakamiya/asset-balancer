@@ -1037,6 +1037,21 @@ export default function Home() {
         if (newStocks.length > 0) {
           // 新しいデータを追加（必要なプロパティを確保）
           const processedNewStocks = newStocks.map(stock => {
+            // 市場と投資国の情報を取得
+            const stockType = stock.type || 'stock';
+            const country = stock.country || 'JP';
+            const isUSStock = stock.isUSStock || false;
+            const isFund = stock.isFund || (stockType === 'fund');
+            const userSetCountry = stock.userSetCountry || false;
+            
+            console.log(`銘柄 ${stock.code} の情報:`, {
+              type: stockType,
+              country: country,
+              isUSStock: isUSStock,
+              isFund: isFund,
+              userSetCountry: userSetCountry
+            });
+            
             // 必須プロパティが欠けている場合はデフォルト値を設定
             return {
               id: stock.id || uuidv4(),
@@ -1045,9 +1060,12 @@ export default function Home() {
               shares: stock.shares || 0,
               price: stock.price || 0,
               value: stock.value || 0,
-              country: stock.country || 'JP',
-              currency: stock.currency || 'JPY',
-              type: stock.type || 'stock',
+              country: country,
+              currency: stock.currency || (country === 'US' ? 'USD' : 'JPY'),
+              type: stockType,
+              isUSStock: isUSStock,
+              isFund: isFund,
+              userSetCountry: userSetCountry,
               lastUpdated: new Date().toLocaleString(), // 最終更新時刻を追加
               importedAt: new Date().getTime(), // インポート時刻を追加（タイムスタンプ）
               ...stock // その他のプロパティを保持

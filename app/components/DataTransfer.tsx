@@ -27,39 +27,50 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
     stockListRef.current = stockList;
   }, [stockList]);
 
-  // データをチャンクに分割（QRコードの容量制限のため）
-  const prepareDataForExport = () => {
-    // 転送するデータを準備（必要な情報のみを含める）
-    const exportData = stockListRef.current.map(stock => ({
-      id: stock.id,
-      code: stock.code,
-      name: stock.name,
-      shares: stock.shares,
-      price: stock.price,
-      value: stock.value,
-      country: stock.country,
-      currency: stock.currency,
-      type: stock.type,
-      // 投資信託の場合は追加情報を含める
-      ...(stock.type === 'fund' ? {
-        expenseRatio: stock.expenseRatio,
-        category: stock.category
-      } : {})
-    }));
-    
-    const data = JSON.stringify(exportData);
-    console.log('エクスポートするデータ:', data);
-    console.log('データサイズ:', data.length, '文字');
-    
-    // QRコードの容量制限を考慮して、データを800文字ずつに分割（1000から800に減らす）
-    const chunkSize = 800;
-    const chunksCount = Math.ceil(data.length / chunkSize);
-    const chunksArray = [];
+  // エクスポート用にデータを準備する関数
+  const prepareDataForExport = (stocks: any[]) => {
+    // エクスポートするデータを選択
+    const exportData = stocks.map(stock => {
+      // 基本情報
+      const baseData: any = {
+        id: stock.id,
+        code: stock.code,
+        name: stock.name,
+        shares: stock.shares,
+        price: stock.price,
+        value: stock.value,
+        // 市場と投資国の情報を確実に含める
+        country: stock.country || 'JP',
+        currency: stock.currency || 'JPY',
+        type: stock.type || 'stock',
+        isUSStock: stock.isUSStock || false,
+        isFund: stock.isFund || false,
+        userSetCountry: stock.userSetCountry || false
+      };
 
+      // ファンドの場合は追加情報を含める
+      if (stock.isFund || stock.type === 'fund') {
+        baseData.expenseRatio = stock.expenseRatio || 0;
+        baseData.category = stock.category || '';
+      }
+
+      return baseData;
+    });
+
+    // エクスポートデータのサイズと内容をログに出力（デバッグ用）
+    const exportDataStr = JSON.stringify(exportData);
+    console.log(`エクスポートデータサイズ: ${exportDataStr.length}文字`);
+    console.log('エクスポートデータサンプル:', exportData.slice(0, 2));
+
+    // QRコードの容量制限に合わせてデータを分割（800文字ごと）
+    const chunkSize = 800; // QRコードの容量制限に合わせて調整
+    const chunksArray = [];
+    const chunksCount = Math.ceil(exportDataStr.length / chunkSize);
+    
     for (let i = 0; i < chunksCount; i++) {
       const start = i * chunkSize;
-      const end = Math.min(start + chunkSize, data.length);
-      const chunk = data.substring(start, end);
+      const end = Math.min(start + chunkSize, exportDataStr.length);
+      const chunk = exportDataStr.substring(start, end);
       // チャンク情報を追加（現在のチャンク番号と総チャンク数）
       const chunkData = {
         data: chunk,
@@ -68,51 +79,29 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
       };
       chunksArray.push(JSON.stringify(chunkData));
     }
-
-    setChunks({ total: chunksCount, current: 1 });
-    setQrData(chunksArray[0]);
+    
+    console.log(`データを${chunksCount}個のチャンクに分割しました`);
+    return chunksArray;
   };
 
-  // チャンクを切り替える
-  const changeChunk = (direction: 'next' | 'prev') => {
-    let newCurrent = direction === 'next' ? chunks.current + 1 : chunks.current - 1;
-    
-    if (newCurrent < 1) newCurrent = chunks.total;
-    if (newCurrent > chunks.total) newCurrent = 1;
-    
-    setChunks({ ...chunks, current: newCurrent });
-    
-    // 転送するデータを準備（prepareDataForExportと同じ処理）
-    const exportData = stockListRef.current.map(stock => ({
-      id: stock.id,
-      code: stock.code,
-      name: stock.name,
-      shares: stock.shares,
-      price: stock.price,
-      value: stock.value,
-      country: stock.country,
-      currency: stock.currency,
-      type: stock.type,
-      // 投資信託の場合は追加情報を含める
-      ...(stock.type === 'fund' ? {
-        expenseRatio: stock.expenseRatio,
-        category: stock.category
-      } : {})
-    }));
-    
-    const data = JSON.stringify(exportData);
-    const chunkSize = 800; // 1000から800に減らす
-    const start = (newCurrent - 1) * chunkSize;
-    const end = Math.min(start + chunkSize, data.length);
-    const chunk = data.substring(start, end);
-    
-    const chunkData = {
-      data: chunk,
-      chunk: newCurrent,
-      total: chunks.total,
-    };
-    
-    setQrData(JSON.stringify(chunkData));
+  // 次のチャンクに進む
+  const nextChunk = () => {
+    if (chunks.current < chunks.total) {
+      const nextChunkIndex = chunks.current;
+      const chunksArray = prepareDataForExport(stockListRef.current);
+      setChunks(prev => ({ ...prev, current: prev.current + 1 }));
+      setQrData(chunksArray[nextChunkIndex]);
+    }
+  };
+
+  // 前のチャンクに戻る
+  const prevChunk = () => {
+    if (chunks.current > 1) {
+      const prevChunkIndex = chunks.current - 2;
+      const chunksArray = prepareDataForExport(stockListRef.current);
+      setChunks(prev => ({ ...prev, current: prev.current - 1 }));
+      setQrData(chunksArray[prevChunkIndex]);
+    }
   };
 
   // QRコードスキャンを開始
@@ -246,7 +235,9 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
     setActiveTab(tab);
     if (tab === 'export') {
       stopScan();
-      prepareDataForExport();
+      const chunksArray = prepareDataForExport(stockListRef.current);
+      setChunks({ total: chunksArray.length, current: 1 });
+      setQrData(chunksArray[0]);
     } else {
       setImportedChunks({});
       importedChunksRef.current = {};
@@ -258,7 +249,9 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
   // コンポーネントがマウントされたときにエクスポートデータを準備
   useEffect(() => {
     if (activeTab === 'export') {
-      prepareDataForExport();
+      const chunksArray = prepareDataForExport(stockListRef.current);
+      setChunks({ total: chunksArray.length, current: 1 });
+      setQrData(chunksArray[0]);
     }
     
     // コンポーネントのアンマウント時にスキャンを停止
@@ -318,7 +311,7 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
           {chunks.total > 1 && (
             <div className="flex items-center mb-4">
               <button
-                onClick={() => changeChunk('prev')}
+                onClick={prevChunk}
                 className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-l-md"
               >
                 ←
@@ -327,7 +320,7 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
                 {chunks.current} / {chunks.total}
               </span>
               <button
-                onClick={() => changeChunk('next')}
+                onClick={nextChunk}
                 className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-r-md"
               >
                 →
