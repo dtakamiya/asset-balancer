@@ -332,11 +332,27 @@ export default function Home() {
               if (data.yahoo.numericPrice > 0) {
                 numericPrice = data.yahoo.numericPrice;
                 price = data.yahoo.price;
+                
+                // 価格が重複している場合は最初の価格のみを使用
+                if (price && price.includes('$') && price.indexOf('$', price.indexOf('$') + 1) > 0) {
+                  const match = price.match(/\$[\d.,]+/);
+                  if (match) {
+                    price = match[0];
+                  }
+                }
               } 
               // Yahoo!で取得できなかった場合はGoogleの株価を使用
               else if (data.google.numericPrice > 0) {
                 numericPrice = data.google.numericPrice;
                 price = data.google.price;
+                
+                // 価格が重複している場合は最初の価格のみを使用
+                if (price && price.includes('$') && price.indexOf('$', price.indexOf('$') + 1) > 0) {
+                  const match = price.match(/\$[\d.,]+/);
+                  if (match) {
+                    price = match[0];
+                  }
+                }
               }
               
               // 通貨に応じた評価額計算
