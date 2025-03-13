@@ -711,9 +711,23 @@ export default function Home() {
     
     if (Array.isArray(importedData) && importedData.length > 0) {
       try {
+        // データの検証
+        const validStocks = importedData.filter(stock => 
+          stock && 
+          typeof stock === 'object' && 
+          stock.id && 
+          stock.code && 
+          stock.name
+        );
+        
+        if (validStocks.length === 0) {
+          alert('有効な銘柄データが見つかりませんでした。');
+          return;
+        }
+        
         // 既存のデータと重複を避けるため、コードをチェック
         const existingCodes = stockList.map(stock => stock.code);
-        const newStocks = importedData.filter(stock => !existingCodes.includes(stock.code));
+        const newStocks = validStocks.filter(stock => !existingCodes.includes(stock.code));
         
         if (newStocks.length > 0) {
           // 新しいデータを追加

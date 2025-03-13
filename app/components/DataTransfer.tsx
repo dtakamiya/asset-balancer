@@ -20,6 +20,7 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const stockListRef = useRef(stockList);
+  const importedChunksRef = useRef<{ [key: number]: string }>({});
 
   // stockListRefを更新
   useEffect(() => {
@@ -82,6 +83,7 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
     setIsScanning(true);
     setScanError('');
     setImportedChunks({});
+    importedChunksRef.current = {};
     
     try {
       readerRef.current = new BrowserMultiFormatReader();
@@ -128,20 +130,22 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
   // スキャン結果を処理
   const handleScanResult = (result: string) => {
     try {
+      console.log('スキャン結果:', result);
       const parsedResult = JSON.parse(result);
       
       if (parsedResult.chunk && parsedResult.total) {
-        // チャンクデータを保存
-        const newImportedChunks = {
-          ...importedChunks,
+        // チャンクデータを保存（refを使用して即時反映）
+        importedChunksRef.current = {
+          ...importedChunksRef.current,
           [parsedResult.chunk]: parsedResult.data
         };
         
-        setImportedChunks(newImportedChunks);
+        // UIの状態も更新
+        setImportedChunks(importedChunksRef.current);
         setScanResult(`チャンク ${parsedResult.chunk}/${parsedResult.total} を読み込みました`);
         
         // すべてのチャンクが揃ったかチェック
-        const receivedChunks = Object.keys(newImportedChunks).length;
+        const receivedChunks = Object.keys(importedChunksRef.current).length;
         console.log(`受信したチャンク: ${receivedChunks}/${parsedResult.total}`);
         
         if (receivedChunks >= parsedResult.total) {
@@ -150,8 +154,8 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
           let missingChunk = false;
           
           for (let i = 1; i <= parsedResult.total; i++) {
-            if (newImportedChunks[i]) {
-              completeData += newImportedChunks[i];
+            if (importedChunksRef.current[i]) {
+              completeData += importedChunksRef.current[i];
             } else {
               setScanResult(`チャンク ${i} が見つかりません。再スキャンしてください。`);
               missingChunk = true;
@@ -164,16 +168,28 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
             try {
               console.log('結合されたデータ:', completeData);
               const importedData = JSON.parse(completeData);
-              onImport(importedData);
-              setScanResult('データのインポートに成功しました！');
-              stopScan();
-              setImportedChunks({});
+              console.log('パースされたデータ:', importedData);
+              
+              // データが配列であることを確認
+              if (Array.isArray(importedData)) {
+                onImport(importedData);
+                setScanResult('データのインポートに成功しました！');
+                stopScan();
+                setImportedChunks({});
+                importedChunksRef.current = {};
+              } else {
+                console.error('データが配列ではありません:', importedData);
+                setScanError('データ形式が正しくありません（配列ではありません）');
+              }
             } catch (e) {
               console.error('データ解析エラー:', e);
               setScanError('データの解析に失敗しました');
             }
           }
         }
+      } else {
+        console.error('チャンク情報がありません:', parsedResult);
+        setScanError('QRコードの形式が正しくありません');
       }
     } catch (e) {
       console.error('QRコード読み取りエラー:', e);
@@ -189,6 +205,7 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
       prepareDataForExport();
     } else {
       setImportedChunks({});
+      importedChunksRef.current = {};
       setScanResult('');
       setScanError('');
     }
@@ -199,6 +216,13 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
     if (activeTab === 'export') {
       prepareDataForExport();
     }
+    
+    // コンポーネントのアンマウント時にスキャンを停止
+    return () => {
+      if (readerRef.current) {
+        readerRef.current.reset();
+      }
+    };
   }, [activeTab]); // stockListは依存配列から削除し、代わりにrefを使用
 
   return (
