@@ -707,17 +707,34 @@ export default function Home() {
 
   // インポートされたデータを処理
   const handleImportData = (importedData: any[]) => {
+    console.log('インポートされたデータ:', importedData);
+    
     if (Array.isArray(importedData) && importedData.length > 0) {
-      // 既存のデータと重複を避けるため、コードをチェック
-      const existingCodes = stockList.map(stock => stock.code);
-      const newStocks = importedData.filter(stock => !existingCodes.includes(stock.code));
-      
-      if (newStocks.length > 0) {
-        // 新しいデータを追加
-        setStockList([...stockList, ...newStocks]);
-        alert(`${newStocks.length}件の銘柄データをインポートしました。`);
-      } else {
-        alert('インポートされたデータはすべて既に登録されています。');
+      try {
+        // 既存のデータと重複を避けるため、コードをチェック
+        const existingCodes = stockList.map(stock => stock.code);
+        const newStocks = importedData.filter(stock => !existingCodes.includes(stock.code));
+        
+        if (newStocks.length > 0) {
+          // 新しいデータを追加
+          const updatedStockList = [...stockList, ...newStocks];
+          setStockList(updatedStockList);
+          
+          // ローカルストレージに保存
+          localStorage.setItem('stockList', JSON.stringify(updatedStockList));
+          
+          alert(`${newStocks.length}件の銘柄データをインポートしました。`);
+          
+          // 価格情報を更新
+          setTimeout(() => {
+            updateStockValues();
+          }, 500);
+        } else {
+          alert('インポートされたデータはすべて既に登録されています。');
+        }
+      } catch (error) {
+        console.error('データインポートエラー:', error);
+        alert('データのインポート中にエラーが発生しました。');
       }
     } else {
       alert('有効なデータがありませんでした。');

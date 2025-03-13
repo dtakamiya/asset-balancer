@@ -19,14 +19,22 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
   const [importedChunks, setImportedChunks] = useState<{ [key: number]: string }>({});
   const videoRef = useRef<HTMLVideoElement>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+  const stockListRef = useRef(stockList);
+
+  // stockListRefを更新
+  useEffect(() => {
+    stockListRef.current = stockList;
+  }, [stockList]);
 
   // データをチャンクに分割（QRコードの容量制限のため）
   const prepareDataForExport = () => {
-    const data = JSON.stringify(stockList);
+    const data = JSON.stringify(stockListRef.current);
+    console.log('エクスポートするデータ:', data);
+    
     // QRコードの容量制限を考慮して、データを1000文字ずつに分割
     const chunkSize = 1000;
     const chunksCount = Math.ceil(data.length / chunkSize);
-    const chunks = [];
+    const chunksArray = [];
 
     for (let i = 0; i < chunksCount; i++) {
       const start = i * chunkSize;
@@ -38,11 +46,11 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
         chunk: i + 1,
         total: chunksCount,
       };
-      chunks.push(JSON.stringify(chunkData));
+      chunksArray.push(JSON.stringify(chunkData));
     }
 
     setChunks({ total: chunksCount, current: 1 });
-    setQrData(chunks[0]);
+    setQrData(chunksArray[0]);
   };
 
   // チャンクを切り替える
@@ -54,7 +62,7 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
     
     setChunks({ ...chunks, current: newCurrent });
     
-    const data = JSON.stringify(stockList);
+    const data = JSON.stringify(stockListRef.current);
     const chunkSize = 1000;
     const start = (newCurrent - 1) * chunkSize;
     const end = Math.min(start + chunkSize, data.length);
@@ -73,6 +81,7 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
   const startScan = async () => {
     setIsScanning(true);
     setScanError('');
+    setImportedChunks({});
     
     try {
       readerRef.current = new BrowserMultiFormatReader();
@@ -123,41 +132,51 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
       
       if (parsedResult.chunk && parsedResult.total) {
         // チャンクデータを保存
-        setImportedChunks(prev => ({
-          ...prev,
+        const newImportedChunks = {
+          ...importedChunks,
           [parsedResult.chunk]: parsedResult.data
-        }));
+        };
         
+        setImportedChunks(newImportedChunks);
         setScanResult(`チャンク ${parsedResult.chunk}/${parsedResult.total} を読み込みました`);
         
         // すべてのチャンクが揃ったかチェック
-        if (Object.keys(importedChunks).length + 1 >= parsedResult.total) {
-          const allChunks = { ...importedChunks, [parsedResult.chunk]: parsedResult.data };
-          
+        const receivedChunks = Object.keys(newImportedChunks).length;
+        console.log(`受信したチャンク: ${receivedChunks}/${parsedResult.total}`);
+        
+        if (receivedChunks >= parsedResult.total) {
           // チャンクを順番に並べて結合
           let completeData = '';
+          let missingChunk = false;
+          
           for (let i = 1; i <= parsedResult.total; i++) {
-            if (allChunks[i]) {
-              completeData += allChunks[i];
+            if (newImportedChunks[i]) {
+              completeData += newImportedChunks[i];
             } else {
               setScanResult(`チャンク ${i} が見つかりません。再スキャンしてください。`);
-              return;
+              missingChunk = true;
+              break;
             }
           }
           
-          // 完全なデータをインポート
-          try {
-            const importedData = JSON.parse(completeData);
-            onImport(importedData);
-            setScanResult('データのインポートに成功しました！');
-            stopScan();
-            setImportedChunks({});
-          } catch (e) {
-            setScanError('データの解析に失敗しました');
+          if (!missingChunk) {
+            // 完全なデータをインポート
+            try {
+              console.log('結合されたデータ:', completeData);
+              const importedData = JSON.parse(completeData);
+              onImport(importedData);
+              setScanResult('データのインポートに成功しました！');
+              stopScan();
+              setImportedChunks({});
+            } catch (e) {
+              console.error('データ解析エラー:', e);
+              setScanError('データの解析に失敗しました');
+            }
           }
         }
       }
     } catch (e) {
+      console.error('QRコード読み取りエラー:', e);
       setScanError('QRコードの読み取りに失敗しました');
     }
   };
@@ -180,7 +199,7 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
     if (activeTab === 'export') {
       prepareDataForExport();
     }
-  }, [activeTab, stockList]);
+  }, [activeTab]); // stockListは依存配列から削除し、代わりにrefを使用
 
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
