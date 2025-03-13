@@ -797,13 +797,6 @@ export default function Home() {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr className="bg-gray-200 dark:bg-gray-700 font-bold">
-                      <td className="px-4 py-3" colSpan={5}>合計評価額</td>
-                      <td className="px-4 py-3 text-right">{totalValue.toLocaleString()}円</td>
-                      <td className="px-4 py-3"></td>
-                    </tr>
-                  </tfoot>
                 </table>
               </div>
               <p className="text-xs text-gray-500 mt-2 text-right">
