@@ -798,52 +798,6 @@ export default function Home() {
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="bg-gray-100 dark:bg-gray-800 font-bold">
-                      <td className="px-4 py-3" colSpan={5}>日本株合計</td>
-                      <td className="px-4 py-3 text-right">{jpStockValue.toLocaleString()}円</td>
-                      <td className="px-4 py-3 text-right">
-                        {totalValue > 0 ? `${Math.round((jpStockValue / totalValue) * 100)}%` : '0%'}
-                      </td>
-                    </tr>
-                    <tr className="bg-gray-100 dark:bg-gray-800 font-bold">
-                      <td className="px-4 py-3" colSpan={5}>米国株合計</td>
-                      <td className="px-4 py-3 text-right">{usStockValue.toLocaleString()}円</td>
-                      <td className="px-4 py-3 text-right">
-                        {totalValue > 0 ? `${Math.round((usStockValue / totalValue) * 100)}%` : '0%'}
-                      </td>
-                    </tr>
-                    <tr className="bg-gray-100 dark:bg-gray-800 font-bold">
-                      <td className="px-4 py-3" colSpan={5}>日本の投資信託合計</td>
-                      <td className="px-4 py-3 text-right">
-                        {jpFundValue.toLocaleString()}円
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {totalValue > 0 ? `${Math.round((jpFundValue / totalValue) * 100)}%` : '0%'}
-                      </td>
-                    </tr>
-                    <tr className="bg-gray-100 dark:bg-gray-800 font-bold">
-                      <td className="px-4 py-3" colSpan={5}>米国の投資信託合計</td>
-                      <td className="px-4 py-3 text-right">
-                        {usFundValue.toLocaleString()}円
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {totalValue > 0 ? `${Math.round((usFundValue / totalValue) * 100)}%` : '0%'}
-                      </td>
-                    </tr>
-                    <tr className="bg-gray-100 dark:bg-gray-800 font-bold">
-                      <td className="px-4 py-3" colSpan={5}>日本投資合計</td>
-                      <td className="px-4 py-3 text-right">{totalJpValue.toLocaleString()}円</td>
-                      <td className="px-4 py-3 text-right">
-                        {totalValue > 0 ? `${Math.round((totalJpValue / totalValue) * 100)}%` : '0%'}
-                      </td>
-                    </tr>
-                    <tr className="bg-gray-100 dark:bg-gray-800 font-bold">
-                      <td className="px-4 py-3" colSpan={5}>米国投資合計</td>
-                      <td className="px-4 py-3 text-right">{totalUsValue.toLocaleString()}円</td>
-                      <td className="px-4 py-3 text-right">
-                        {totalValue > 0 ? `${Math.round((totalUsValue / totalValue) * 100)}%` : '0%'}
-                      </td>
-                    </tr>
                     <tr className="bg-gray-200 dark:bg-gray-700 font-bold">
                       <td className="px-4 py-3" colSpan={5}>合計評価額</td>
                       <td className="px-4 py-3 text-right">{totalValue.toLocaleString()}円</td>
