@@ -35,8 +35,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [exchangeRate, setExchangeRate] = useState(150); // デフォルト値: 150円/ドル
-  const [autoRefresh, setAutoRefresh] = useState(false);
-  const [refreshInterval, setRefreshInterval] = useState<number>(60000); // デフォルトは1分
+  const [autoRefresh, setAutoRefresh] = useState(true); // デフォルトで自動更新ON
+  const [refreshInterval, setRefreshInterval] = useState<number>(600000); // デフォルトは10分
   const [isUSStock, setIsUSStock] = useState(false); // 米国株かどうかのフラグ
   const [isFund, setIsFund] = useState(false); // 投資信託かどうかのフラグ
   const [country, setCountry] = useState<'JP' | 'US'>('JP'); // 国の区分
@@ -50,6 +50,17 @@ export default function Home() {
   const [totalUsValue, setTotalUsValue] = useState(0);
   // リバランス情報
   const [targetRatio, setTargetRatio] = useState(50); // 目標比率（デフォルト50%）
+  // 編集中の所有数
+  const [editingShares, setEditingShares] = useState<{[key: string]: string}>({});
+  // 最近更新された株式ID
+  const [recentlyUpdated, setRecentlyUpdated] = useState<string | null>(null);
+  // 最終更新時刻
+  const [lastUpdatedTime, setLastUpdatedTime] = useState<string>('');
+  // ソート設定
+  const [sortConfig, setSortConfig] = useState<{key: keyof StockItem | ''; direction: 'ascending' | 'descending' | ''}>({
+    key: '',
+    direction: ''
+  });
 
   // ローカルストレージからデータを読み込む
   useEffect(() => {
@@ -165,12 +176,20 @@ export default function Home() {
       const parsedAutoRefresh = savedAutoRefresh === 'true';
       console.log('自動更新設定を読み込み: 保存された値=', savedAutoRefresh, '解析後=', parsedAutoRefresh);
       setAutoRefresh(parsedAutoRefresh);
+    } else {
+      // 保存されていない場合はデフォルト値（true）を使用
+      console.log('自動更新設定が保存されていないため、デフォルト値（ON）を使用');
+      localStorage.setItem('autoRefresh', 'true');
     }
     
     if (savedRefreshInterval !== null) {
       const parsedInterval = parseInt(savedRefreshInterval, 10);
       console.log('更新間隔を読み込み: 保存された値=', savedRefreshInterval, '解析後=', parsedInterval);
       setRefreshInterval(parsedInterval);
+    } else {
+      // 保存されていない場合はデフォルト値（600000 = 10分）を使用
+      console.log('更新間隔が保存されていないため、デフォルト値（10分）を使用');
+      localStorage.setItem('refreshInterval', '600000');
     }
     
     // 目標比率の読み込み
@@ -248,7 +267,8 @@ export default function Home() {
     }
 
     setLoading(true);
-    console.log('株価更新開始: ' + new Date().toLocaleString());
+    const updateStartTime = new Date().toLocaleString();
+    console.log('株価更新開始: ' + updateStartTime);
     
     let updatedList = [...stockList];
     
@@ -279,8 +299,8 @@ export default function Home() {
                 price = data.fund.price;
               }
               
-              // 評価額計算 - 投資信託は基準価額×口数÷10000で計算
-              const value = numericPrice * stock.shares / 10000;
+              // 評価額計算 - 投資信託は基準価額×口数÷10000で計算（四捨五入）
+              const value = Math.round(numericPrice * stock.shares / 10000);
               
               updatedList[i] = {
                 ...stock,
@@ -334,12 +354,12 @@ export default function Home() {
               
               // 米国株の場合
               if (isUS) {
-                // 米国株の場合は円換算
-                value = numericPrice * stock.shares * exchangeRate;
+                // 米国株の場合は円換算（四捨五入）
+                value = Math.round(numericPrice * stock.shares * exchangeRate);
                 priceInJPY = numericPrice > 0 ? `${numericPrice.toLocaleString()} ドル (${(numericPrice * exchangeRate).toLocaleString()} 円)` : '未取得';
               } else {
-                // 日本株の場合はそのまま
-                value = numericPrice * stock.shares;
+                // 日本株の場合はそのまま（四捨五入）
+                value = Math.round(numericPrice * stock.shares);
                 priceInJPY = '';
               }
               
@@ -365,20 +385,39 @@ export default function Home() {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
       
-      setStockList(updatedList);
-      console.log('情報更新完了: ' + new Date().toLocaleString());
+      // 更新完了時刻を記録
+      const updateEndTime = new Date().toLocaleString();
+      setLastUpdatedTime(updateEndTime);
+      console.log('情報更新完了: ' + updateEndTime);
       
-      // 更新後に合計評価額を再計算（タイムアウトを長くして確実に反映されるようにする）
-      setTimeout(() => {
-        calculateTotalValue();
-        console.log('合計評価額再計算完了');
-        
-        // 再計算後にUIを強制的に更新
-        setTotalValue(prev => {
-          console.log('合計評価額を強制更新:', prev);
-          return prev;
-        });
-      }, 1000);
+      // 株式リストを更新
+      setStockList(updatedList);
+      
+      // 合計評価額を直接計算して更新
+      let totalJp = 0;
+      let totalUs = 0;
+      
+      updatedList.forEach(stock => {
+        if (stock.value) {
+          if (stock.country === 'US') {
+            totalUs += stock.value;
+          } else {
+            totalJp += stock.value;
+          }
+        }
+      });
+      
+      const total = totalJp + totalUs;
+      
+      // 合計評価額を更新
+      setTotalJpValue(Math.round(totalJp));
+      setTotalUsValue(Math.round(totalUs));
+      setTotalValue(Math.round(total));
+      
+      console.log('合計評価額を更新:');
+      console.log(`日本投資合計: ${totalJp}円`);
+      console.log(`米国投資合計: ${totalUs}円`);
+      console.log(`総合計: ${total}円`);
     } finally {
       setLoading(false);
     }
@@ -428,6 +467,91 @@ export default function Home() {
   // 株式を削除
   const removeStock = (id: string) => {
     setStockList(stockList.filter(item => item.id !== id));
+  };
+
+  // 所有数を更新
+  const updateShares = (id: string, newShares: number) => {
+    if (newShares <= 0) {
+      // 所有数が0以下の場合はエラーメッセージを表示
+      setError('所有数は1以上の値を入力してください');
+      return;
+    }
+    
+    setError(''); // エラーメッセージをクリア
+    
+    // 株式リストを更新
+    const updatedList = stockList.map(stock => {
+      if (stock.id === id) {
+        // 所有数が変更されていない場合は何もしない
+        if (stock.shares === newShares) {
+          return stock;
+        }
+        
+        // 所有数を更新
+        const updatedStock = { ...stock, shares: newShares };
+        
+        // 評価額を再計算
+        if (typeof stock.price === 'number') {
+          // 価格が数値の場合
+          if (stock.currency === 'USD') {
+            // 米国株の場合は円換算（四捨五入）
+            updatedStock.value = Math.round(stock.price * newShares * exchangeRate);
+          } else {
+            // 日本株の場合はそのまま（四捨五入）
+            updatedStock.value = Math.round(stock.price * newShares);
+          }
+        } else if (stock.type === 'fund' && typeof stock.price === 'string') {
+          // 投資信託の場合、価格文字列から数値を抽出して計算
+          const priceMatch = stock.price.toString().match(/[\d,]+/);
+          if (priceMatch) {
+            const numericPrice = parseFloat(priceMatch[0].replace(/,/g, ''));
+            // 投資信託は基準価額×口数÷10000で計算（四捨五入）
+            updatedStock.value = Math.round(numericPrice * newShares / 10000);
+          }
+        }
+        
+        // 更新されたことを視覚的に示すためにIDを保存
+        setRecentlyUpdated(id);
+        // 一定時間後にハイライトを解除
+        setTimeout(() => {
+          setRecentlyUpdated(null);
+        }, 2000);
+        
+        return updatedStock;
+      }
+      return stock;
+    });
+    
+    setStockList(updatedList);
+    
+    // 編集中の所有数をクリア
+    const newEditingShares = { ...editingShares };
+    delete newEditingShares[id];
+    setEditingShares(newEditingShares);
+    
+    // 合計評価額を再計算
+    setTimeout(() => {
+      calculateTotalValue();
+    }, 100);
+  };
+
+  // 編集中の所有数を更新
+  const handleSharesChange = (id: string, value: string) => {
+    setEditingShares({
+      ...editingShares,
+      [id]: value
+    });
+  };
+
+  // 所有数の入力が完了したときの処理
+  const handleSharesBlur = (id: string) => {
+    const value = editingShares[id];
+    if (value !== undefined) {
+      const numericValue = parseInt(value, 10);
+      if (!isNaN(numericValue)) {
+        updateShares(id, numericValue);
+      }
+    }
   };
 
   // 株価を検索
@@ -521,13 +645,67 @@ export default function Home() {
     localStorage.setItem('targetRatio', targetRatio.toString());
   }, [targetRatio]);
 
+  // ソート関数
+  const requestSort = (key: keyof StockItem) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    
+    // 同じキーでソートする場合は方向を反転
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    
+    setSortConfig({ key, direction });
+  };
+
+  // ソート済みの株式リストを取得
+  const getSortedStockList = () => {
+    if (!sortConfig.key) {
+      return stockList;
+    }
+    
+    return [...stockList].sort((a, b) => {
+      // ソートキーに基づいて比較
+      const key = sortConfig.key as keyof StockItem;
+      
+      if (a[key] === null || a[key] === undefined) return 1;
+      if (b[key] === null || b[key] === undefined) return -1;
+      
+      let aValue = a[key];
+      let bValue = b[key];
+      
+      // 文字列の場合は小文字に変換して比較
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+      
+      // 評価額の場合は数値として比較
+      if (key === 'value') {
+        aValue = a.value || 0;
+        bValue = b.value || 0;
+      }
+      
+      // 比較結果
+      if (aValue < bValue) {
+        return sortConfig.direction === 'ascending' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'ascending' ? 1 : -1;
+      }
+      return 0;
+    });
+  };
+
+  // ソート済みの株式リスト
+  const sortedStockList = getSortedStockList();
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-8 flex flex-col items-center">
       <header className="w-full max-w-4xl mb-8 text-center relative">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 opacity-10 rounded-xl -z-10"></div>
-        <h1 className="text-4xl font-bold mb-3 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">株価・投資信託チェッカー</h1>
+        <h1 className="text-4xl font-bold mb-3 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">アセットバランサー - 資産配分最適化ツール</h1>
         <p className="text-gray-600 dark:text-gray-300 text-lg">
-          Yahoo!ファイナンスとGoogleファイナンスから株価・投資信託情報を取得します
+          最適な資産配分でリバランスを管理し、投資パフォーマンスを向上させます
         </p>
         <div className="mt-3 inline-block px-4 py-2 bg-white dark:bg-gray-800 rounded-full shadow-sm">
           <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
@@ -540,7 +718,14 @@ export default function Home() {
         {/* 投資額サマリー - 銘柄を登録の上に移動 */}
         {totalValue > 0 && (
           <div className="w-full mb-8 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl">
-            <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-2">投資額サマリー</h3>
+            <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-2 flex justify-between items-center">
+              <span>投資額サマリー</span>
+              {lastUpdatedTime && (
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-normal">
+                  最終更新: {lastUpdatedTime}
+                </span>
+              )}
+            </h3>
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 p-5 rounded-lg text-center shadow-sm transition-transform duration-300 hover:scale-105">
                 <div className="text-sm text-gray-600 dark:text-gray-300 font-medium">合計投資額</div>
@@ -603,7 +788,7 @@ export default function Home() {
               
               {/* リバランス計算結果 */}
               {totalValue > 0 && (
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-5 rounded-lg shadow-sm">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 p-5 rounded-lg shadow-sm">
                   <h5 className="font-semibold mb-3 text-gray-900 dark:text-white flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -654,22 +839,45 @@ export default function Home() {
                           </div>
                         </div>
                         
-                        <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg">
-                          <h6 className="font-semibold mb-2 text-gray-900 dark:text-white">リバランス推奨アクション</h6>
+                        <div className="mt-4 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-lg shadow-md border-l-4 border-blue-500 dark:border-blue-400">
+                          <h6 className="font-bold mb-3 text-lg text-gray-900 dark:text-white flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            リバランス推奨アクション
+                          </h6>
                           {Math.abs(jpDifference) < 10000 && Math.abs(usDifference) < 10000 ? (
-                            <p className="text-green-600 dark:text-green-400">現在のポートフォリオは目標比率に近いため、リバランス不要です。</p>
+                            <div className="bg-green-100 dark:bg-green-900/30 p-4 rounded-lg">
+                              <p className="text-green-600 dark:text-green-400 font-medium text-center">
+                                現在のポートフォリオは目標比率に近いため、リバランス不要です。
+                              </p>
+
+                              <p className="text-green-800 dark:text-green-300 font-bold text-center text-lg">
+                                現在のポートフォリオは目標比率に近いため、リバランス不要です。
+                              </p>
+                            </div>
                           ) : (
-                            <div>
+                            <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-lg">
                               {totalJpValue < totalUsValue ? (
-                                <p className="mb-2 text-gray-900 dark:text-white">
-                                  <span className="font-semibold text-blue-600 dark:text-blue-400">日本投資を{Math.abs(Math.round(totalUsValue - totalJpValue)).toLocaleString()}円分追加</span>してください。
-                                </p>
+                                <div className="text-center">
+                                  <p className="mb-3 text-gray-900 dark:text-white text-lg">
+                                    <span className="font-extrabold text-red-700 dark:text-red-300 block text-2xl mb-3">日本投資を追加</span>
+                                    <span className="bg-white dark:bg-gray-800 px-6 py-3 rounded-lg inline-block font-bold text-xl text-red-800 dark:text-red-300 shadow-md">
+                                      {Math.abs(Math.round(totalUsValue - totalJpValue)).toLocaleString()}円
+                                    </span>
+                                  </p>
+                                </div>
                               ) : (
-                                <p className="mb-2 text-gray-900 dark:text-white">
-                                  <span className="font-semibold text-blue-600 dark:text-blue-400">米国投資を{Math.abs(Math.round(totalJpValue - totalUsValue)).toLocaleString()}円分追加</span>してください。
-                                </p>
+                                <div className="text-center">
+                                  <p className="mb-3 text-gray-900 dark:text-white text-lg">
+                                    <span className="font-extrabold text-blue-700 dark:text-blue-300 block text-2xl mb-3">米国投資を追加</span>
+                                    <span className="bg-white dark:bg-gray-800 px-6 py-3 rounded-lg inline-block font-bold text-xl text-red-800 dark:text-red-300 shadow-md">
+                                      {Math.abs(Math.round(totalUsValue - totalJpValue)).toLocaleString()}円
+                                    </span>
+                                  </p>
+                                </div>
                               )}
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-3 text-center">
                                 ※ 売却せずに不足分を購入することでリバランスを行います。
                               </p>
                             </div>
@@ -802,7 +1010,7 @@ export default function Home() {
         )}
 
         {/* 株式登録フォーム */}
-        <form onSubmit={addStock} className="w-full max-w-md mb-8 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+        <form onSubmit={addStock} className="w-full max-w-md mb-8 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mt-16">
           <div className="flex flex-col gap-4">
             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 flex items-center border-b border-gray-200 dark:border-gray-700 pb-2">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1016,76 +1224,179 @@ export default function Home() {
           
           {stockList.length > 0 ? (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">銘柄コード</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">銘柄名</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">現在値</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">所有数</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">評価額</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">投資国</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">操作</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {stockList.map((stock, index) => (
-                    <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                        {stock.isFund ? (
-                          <span className="flex items-center">
-                            {stock.code}
-                            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">投信</span>
-                          </span>
-                        ) : stock.isUSStock ? (
-                          <span className="flex items-center">
-                            {stock.code}
-                            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">米国</span>
-                          </span>
-                        ) : (
-                          stock.code
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{stock.name || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                        {stock.price ? (
-                          <span>
-                            {stock.isUSStock ? '$' : '¥'}{stock.price.toLocaleString()}
-                          </span>
-                        ) : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{stock.shares.toLocaleString()}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {stock.value ? (
-                          <span className="text-gray-900 dark:text-white">¥{stock.value.toLocaleString()}</span>
-                        ) : '-'}
-                        {stock.isUSStock && stock.priceInJPY && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            (${(typeof stock.price === 'number' ? stock.price * stock.shares : 0).toLocaleString()})
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {stock.country === 'JP' ? (
-                          <span className="px-2 py-1 text-xs rounded-md bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">日本</span>
-                        ) : (
-                          <span className="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">米国</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                        <button
-                          onClick={() => removeStock(stock.id)}
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-150 focus:outline-none"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th 
+                        scope="col" 
+                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[15%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                        onClick={() => requestSort('code')}
+                      >
+                        <div className="flex items-center">
+                          銘柄コード
+                          {sortConfig.key === 'code' && (
+                            <span className="ml-1">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        scope="col" 
+                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[20%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                        onClick={() => requestSort('name')}
+                      >
+                        <div className="flex items-center">
+                          銘柄名
+                          {sortConfig.key === 'name' && (
+                            <span className="ml-1">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        scope="col" 
+                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[15%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                        onClick={() => requestSort('price')}
+                      >
+                        <div className="flex items-center justify-end">
+                          現在値
+                          {sortConfig.key === 'price' && (
+                            <span className="ml-1">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        scope="col" 
+                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[15%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                        onClick={() => requestSort('shares')}
+                      >
+                        <div className="flex items-center">
+                          所有数
+                          {sortConfig.key === 'shares' && (
+                            <span className="ml-1">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        scope="col" 
+                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[20%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                        onClick={() => requestSort('value')}
+                      >
+                        <div className="flex items-center justify-end">
+                          評価額
+                          {sortConfig.key === 'value' && (
+                            <span className="ml-1">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        scope="col" 
+                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[10%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                        onClick={() => requestSort('country')}
+                      >
+                        <div className="flex items-center">
+                          投資国
+                          {sortConfig.key === 'country' && (
+                            <span className="ml-1">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[5%]">操作</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {sortedStockList.map((stock, index) => (
+                      <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
+                        <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                          {stock.isFund ? (
+                            <span className="flex items-center">
+                              {stock.code}
+                              <span className="ml-1 px-1 py-0.5 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">投信</span>
+                            </span>
+                          ) : stock.isUSStock ? (
+                            <span className="flex items-center">
+                              {stock.code}
+                              <span className="ml-1 px-1 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">米国</span>
+                            </span>
+                          ) : (
+                            stock.code
+                          )}
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 truncate">{stock.name || '-'}</td>
+                        <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right">
+                          {stock.price ? (
+                            <span>
+                              {stock.isUSStock ? '$' : '¥'}{stock.price.toLocaleString()}
+                            </span>
+                          ) : '-'}
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                          <div className="flex items-center">
+                            <input
+                              type="number"
+                              value={editingShares[stock.id] !== undefined ? editingShares[stock.id] : stock.shares}
+                              onChange={(e) => handleSharesChange(stock.id, e.target.value)}
+                              onBlur={() => handleSharesBlur(stock.id)}
+                              min="1"
+                              className={`w-24 px-2 py-1 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm transition-all duration-200 hover:border-blue-300 dark:hover:border-blue-500 ${
+                                recentlyUpdated === stock.id 
+                                  ? 'border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/20' 
+                                  : 'border-gray-300 dark:border-gray-600'
+                              }`}
+                            />
+                            <span className="ml-1">{stock.isFund ? '口' : '株'}</span>
+                            {recentlyUpdated === stock.id && (
+                              <span className="ml-1 text-xs text-green-600 dark:text-green-400 animate-pulse">
+                                更新
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className={`px-3 py-3 whitespace-nowrap text-sm font-medium transition-colors duration-300 text-right ${
+                          recentlyUpdated === stock.id ? 'bg-green-50 dark:bg-green-900/10' : ''
+                        }`}>
+                          {stock.value ? (
+                            <span className="text-gray-900 dark:text-white">¥{stock.value.toLocaleString()}</span>
+                          ) : '-'}
+                          {stock.isUSStock && stock.priceInJPY && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              (${(typeof stock.price === 'number' ? stock.price * stock.shares : 0).toLocaleString()})
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-sm">
+                          {stock.country === 'JP' ? (
+                            <span className="px-2 py-1 text-xs rounded-md bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">日本</span>
+                          ) : (
+                            <span className="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">米国</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                          <button
+                            onClick={() => removeStock(stock.id)}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-150 focus:outline-none"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
             <div className="bg-white dark:bg-gray-800 p-8 text-center rounded-xl shadow-lg">
@@ -1208,7 +1519,7 @@ export default function Home() {
       </main>
 
       <footer className="mt-auto pt-8 pb-4 text-center text-sm text-gray-500">
-        <p>© {new Date().getFullYear()} 株価チェッカー - Next.jsで作成</p>
+        <p>© {new Date().getFullYear()} アセットバランサー - Next.jsで作成</p>
       </footer>
     </div>
   );
