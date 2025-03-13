@@ -128,11 +128,11 @@ export default function Home() {
     let intervalId: NodeJS.Timeout | null = null;
     
     if (autoRefresh && stockList.length > 0) {
-      console.log(`自動更新を開始: ${refreshInterval / 60000}分間隔`);
+      console.log(`自動更新を開始: ${refreshInterval / 60000}分間隔で株価と為替レートを更新`);
       // 指定された間隔で株価を更新
       intervalId = setInterval(() => {
         if (!loading) {
-          console.log('定期更新: 株価取得開始');
+          console.log('定期更新: 株価と為替レートの取得開始');
           updateStockValues();
         } else {
           console.log('前回の更新が完了していないため、スキップします');
@@ -253,7 +253,7 @@ export default function Home() {
     let updatedList = [...stockList];
     
     try {
-      // 為替レートを更新（一度だけ）
+      // 為替レートを更新（自動更新時も毎回実行）
       await fetchExchangeRate();
       
       for (let i = 0; i < updatedList.length; i++) {
@@ -498,6 +498,7 @@ export default function Home() {
 
   // 株価を更新
   const refreshStockValues = () => {
+    console.log('株価と為替レートの手動更新を開始');
     updateStockValues();
   };
 
