@@ -15,7 +15,7 @@ interface StockItem {
   code: string;
   name: string;
   shares: number;
-  price: number;
+  price: number | string;
   value: number;
   country: 'JP' | 'US';
   currency: string;
@@ -34,7 +34,6 @@ export default function Home() {
   const [stockData, setStockData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [updatingPrices, setUpdatingPrices] = useState(false);
   const [exchangeRate, setExchangeRate] = useState(150); // デフォルト値: 150円/ドル
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState<number>(60000); // デフォルトは1分
@@ -235,12 +234,12 @@ export default function Home() {
     }
 
     // 既に更新中の場合は処理をスキップ
-    if (updatingPrices) {
+    if (loading) {
       console.log('既に更新中のため、処理をスキップします');
       return;
     }
 
-    setUpdatingPrices(true);
+    setLoading(true);
     console.log('株価更新開始: ' + new Date().toLocaleString());
     
     let updatedList = [...stockList];
@@ -373,7 +372,7 @@ export default function Home() {
         });
       }, 1000);
     } finally {
-      setUpdatingPrices(false);
+      setLoading(false);
     }
   };
 
@@ -925,7 +924,7 @@ export default function Home() {
                 {loading ? (
                   <svg className="animate-spin h-5 w-5 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 ) : (
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1059,7 +1058,7 @@ export default function Home() {
                         ) : '-'}
                         {stock.isUSStock && stock.priceInJPY && (
                           <div className="text-xs text-gray-500 dark:text-gray-400">
-                            (${(stock.price * stock.shares).toLocaleString()})
+                            (${(typeof stock.price === 'number' ? stock.price * stock.shares : 0).toLocaleString()})
                           </div>
                         )}
                       </td>
