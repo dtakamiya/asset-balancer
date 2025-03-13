@@ -30,6 +30,7 @@ interface StockItem {
 
 // DataTransferModalをインポート
 import DataTransferModal from './components/DataTransferModal';
+import { APP_VERSION } from './version';
 
 export default function Home() {
   const [stockCode, setStockCode] = useState('');
@@ -1589,6 +1590,11 @@ export default function Home() {
 
       <footer className="mt-auto pt-8 pb-4 text-center text-sm text-gray-500">
         <p>© {new Date().getFullYear()} アセットバランサー - Next.jsで作成</p>
+        <p className="mt-1">
+          <span className="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-xs font-mono">
+            {APP_VERSION}
+          </span>
+        </p>
       </footer>
       
       {/* データ転送モーダル */}
