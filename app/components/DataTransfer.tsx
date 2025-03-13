@@ -51,8 +51,8 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
     console.log('エクスポートするデータ:', data);
     console.log('データサイズ:', data.length, '文字');
     
-    // QRコードの容量制限を考慮して、データを1000文字ずつに分割
-    const chunkSize = 1000;
+    // QRコードの容量制限を考慮して、データを800文字ずつに分割（1000から800に減らす）
+    const chunkSize = 800;
     const chunksCount = Math.ceil(data.length / chunkSize);
     const chunksArray = [];
 
@@ -101,7 +101,7 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
     }));
     
     const data = JSON.stringify(exportData);
-    const chunkSize = 1000;
+    const chunkSize = 800; // 1000から800に減らす
     const start = (newCurrent - 1) * chunkSize;
     const end = Math.min(start + chunkSize, data.length);
     const chunk = data.substring(start, end);
@@ -308,7 +308,11 @@ const DataTransfer: React.FC<DataTransferProps> = ({ stockList, onImport }) => {
           )}
           
           <div className="bg-white p-4 rounded-lg mb-4">
-            <QRCodeSVG value={qrData} size={250} />
+            <QRCodeSVG 
+              value={qrData} 
+              size={250} 
+              level="M"
+            />
           </div>
           
           {chunks.total > 1 && (
