@@ -674,6 +674,123 @@ export default function Home() {
           </div>
         )}
 
+        {/* ポートフォリオ構成 */}
+        {totalValue > 0 && (
+          <div className="w-full mt-8 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 flex items-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+              </svg>
+              ポートフォリオ構成
+            </h3>
+            <div className="flex flex-col md:flex-row items-center justify-between">
+              <div className="w-full md:w-1/2" style={{ height: '300px' }}>
+                <Pie
+                  data={{
+                    labels: ['日本投資', '米国投資'],
+                    datasets: [
+                      {
+                        data: [
+                          totalJpValue, 
+                          totalUsValue
+                        ],
+                        backgroundColor: [
+                          'rgba(239, 68, 68, 0.7)',
+                          'rgba(59, 130, 246, 0.7)'
+                        ],
+                        borderColor: [
+                          'rgba(239, 68, 68, 1)',
+                          'rgba(59, 130, 246, 1)'
+                        ],
+                        borderWidth: 2,
+                        hoverBackgroundColor: [
+                          'rgba(239, 68, 68, 0.9)',
+                          'rgba(59, 130, 246, 0.9)'
+                        ],
+                        hoverBorderColor: [
+                          'rgba(239, 68, 68, 1)',
+                          'rgba(59, 130, 246, 1)'
+                        ],
+                        hoverBorderWidth: 3,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        position: 'bottom',
+                        labels: {
+                          font: {
+                            size: 14,
+                            weight: 'bold'
+                          },
+                          padding: 20,
+                          usePointStyle: true,
+                          pointStyle: 'circle'
+                        }
+                      },
+                      tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleFont: {
+                          size: 16,
+                          weight: 'bold'
+                        },
+                        bodyFont: {
+                          size: 14
+                        },
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                          label: function(context) {
+                            const value = context.raw as number;
+                            const percentage = Math.round((value / totalValue) * 100);
+                            return `${context.label}: ${value.toLocaleString()}円 (${percentage}%)`;
+                          }
+                        }
+                      }
+                    },
+                    animation: {
+                      animateScale: true,
+                      animateRotate: true,
+                      duration: 2000,
+                      easing: 'easeOutQuart'
+                    },
+                    cutout: '60%',
+                  }}
+                />
+              </div>
+              <div className="w-full md:w-1/2 mt-6 md:mt-0 md:pl-8">
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-red-800 dark:text-red-300 mb-1">日本投資</h4>
+                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">¥{totalJpValue.toLocaleString()}</p>
+                    <p className="text-sm text-red-600/70 dark:text-red-400/70 mt-1">
+                      {Math.round((totalJpValue / totalValue) * 100)}% of total
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">米国投資</h4>
+                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">¥{totalUsValue.toLocaleString()}</p>
+                    <p className="text-sm text-blue-600/70 dark:text-blue-400/70 mt-1">
+                      {Math.round((totalUsValue / totalValue) * 100)}% of total
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-purple-800 dark:text-purple-300 mb-1">合計投資額</h4>
+                    <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">¥{totalValue.toLocaleString()}</p>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mt-2">
+                      <div className="bg-gradient-to-r from-red-500 to-blue-500 h-2.5 rounded-full" style={{ width: '100%' }}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 株式登録フォーム */}
         <form onSubmit={addStock} className="w-full max-w-md mb-8 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
           <div className="flex flex-col gap-4">
