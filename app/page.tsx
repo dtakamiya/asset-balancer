@@ -41,12 +41,6 @@ export default function Home() {
   const [stockList, setStockList] = useState<StockItem[]>([]);
   // 合計評価額
   const [totalValue, setTotalValue] = useState(0);
-  // 日本株と米国株の合計評価額
-  const [jpStockValue, setJpStockValue] = useState(0);
-  const [usStockValue, setUsStockValue] = useState(0);
-  // 日本と米国の投資信託の合計評価額
-  const [jpFundValue, setJpFundValue] = useState(0);
-  const [usFundValue, setUsFundValue] = useState(0);
   // 日本と米国の合計投資額
   const [totalJpValue, setTotalJpValue] = useState(0);
   const [totalUsValue, setTotalUsValue] = useState(0);
@@ -194,62 +188,36 @@ export default function Home() {
   const calculateTotalValue = () => {
     if (stockList.length === 0) {
       setTotalValue(0);
-      setJpStockValue(0);
-      setUsStockValue(0);
-      setJpFundValue(0);
-      setUsFundValue(0);
       setTotalJpValue(0);
       setTotalUsValue(0);
       return;
     }
 
-    let jpTotal = 0;
-    let usTotal = 0;
-    let jpFundTotal = 0;
-    let usFundTotal = 0;
+    let totalJp = 0;
+    let totalUs = 0;
 
     console.log('合計評価額計算開始:');
     stockList.forEach(stock => {
       console.log(`${stock.code}: 種別=${stock.type}, 国=${stock.country}, 通貨=${stock.currency}, 評価額=${stock.value || 0}円`);
       
       if (stock.value) {
-        // 投資国と種別に基づいて分類
-        if (stock.type === 'fund') {
-          if (stock.country === 'US') {
-            usFundTotal += stock.value;
-            console.log(`  → 米国投資信託に加算: ${stock.value}円`);
-          } else {
-            jpFundTotal += stock.value;
-            console.log(`  → 日本投資信託に加算: ${stock.value}円`);
-          }
-        } else { // 株式の場合
-          if (stock.country === 'US') {
-            usTotal += stock.value;
-            console.log(`  → 米国株に加算: ${stock.value}円`);
-          } else {
-            jpTotal += stock.value;
-            console.log(`  → 日本株に加算: ${stock.value}円`);
-          }
+        // 投資国だけに基づいて分類
+        if (stock.country === 'US') {
+          totalUs += stock.value;
+          console.log(`  → 米国投資に加算: ${stock.value}円`);
+        } else {
+          totalJp += stock.value;
+          console.log(`  → 日本投資に加算: ${stock.value}円`);
         }
       }
     });
 
-    const total = jpTotal + usTotal + jpFundTotal + usFundTotal;
-    const totalJp = jpTotal + jpFundTotal;
-    const totalUs = usTotal + usFundTotal;
+    const total = totalJp + totalUs;
     
-    console.log(`日本株合計: ${jpTotal}円`);
-    console.log(`米国株合計: ${usTotal}円`);
-    console.log(`日本投資信託合計: ${jpFundTotal}円`);
-    console.log(`米国投資信託合計: ${usFundTotal}円`);
     console.log(`日本投資合計: ${totalJp}円`);
     console.log(`米国投資合計: ${totalUs}円`);
     console.log(`総合計: ${total}円`);
     
-    setJpStockValue(Math.round(jpTotal));
-    setUsStockValue(Math.round(usTotal));
-    setJpFundValue(Math.round(jpFundTotal));
-    setUsFundValue(Math.round(usFundTotal));
     setTotalJpValue(Math.round(totalJp));
     setTotalUsValue(Math.round(totalUs));
     setTotalValue(Math.round(total));
@@ -1005,32 +973,21 @@ export default function Home() {
                   <div className="flex justify-center" style={{ height: '300px' }}>
                     <Pie
                       data={{
-                        labels: ['日本株', '米国株', '日本の投資信託', '米国の投資信託'],
+                        labels: ['日本投資', '米国投資'],
                         datasets: [
                           {
                             data: [
-                              jpStockValue, 
-                              usStockValue,
-                              stockList
-                                .filter(stock => stock.type === 'fund' && stock.country === 'JP')
-                                .reduce((sum, stock) => sum + (stock.value || 0), 0),
-                              stockList
-                                .filter(stock => stock.type === 'fund' && stock.country === 'US')
-                                .reduce((sum, stock) => sum + (stock.value || 0), 0)
+                              totalJpValue, 
+                              totalUsValue
                             ],
                             backgroundColor: [
                               'rgba(255, 99, 132, 0.6)',
-                              'rgba(54, 162, 235, 0.6)',
-                              'rgba(75, 192, 192, 0.6)',
-                              'rgba(153, 102, 255, 0.6)'
+                              'rgba(54, 162, 235, 0.6)'
                             ],
                             borderColor: [
                               'rgba(255, 99, 132, 1)',
-                              'rgba(54, 162, 235, 1)',
-                              'rgba(75, 192, 192, 1)',
-                              'rgba(153, 102, 255, 1)'
+                              'rgba(54, 162, 235, 1)'
                             ],
-                            borderWidth: 1,
                           },
                         ],
                       }}
