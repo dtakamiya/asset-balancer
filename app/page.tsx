@@ -28,6 +28,9 @@ interface StockItem {
   priceChangePercent?: string;
 }
 
+// DataTransferModalをインポート
+import DataTransferModal from './components/DataTransferModal';
+
 export default function Home() {
   const [stockCode, setStockCode] = useState('');
   const [shares, setShares] = useState<string>('');
@@ -61,6 +64,9 @@ export default function Home() {
     key: '',
     direction: ''
   });
+
+  // データ転送モーダルの状態
+  const [isDataTransferModalOpen, setIsDataTransferModalOpen] = useState(false);
 
   // ローカルストレージからデータを読み込む
   useEffect(() => {
@@ -699,6 +705,25 @@ export default function Home() {
   // ソート済みの株式リスト
   const sortedStockList = getSortedStockList();
 
+  // インポートされたデータを処理
+  const handleImportData = (importedData: any[]) => {
+    if (Array.isArray(importedData) && importedData.length > 0) {
+      // 既存のデータと重複を避けるため、コードをチェック
+      const existingCodes = stockList.map(stock => stock.code);
+      const newStocks = importedData.filter(stock => !existingCodes.includes(stock.code));
+      
+      if (newStocks.length > 0) {
+        // 新しいデータを追加
+        setStockList([...stockList, ...newStocks]);
+        alert(`${newStocks.length}件の銘柄データをインポートしました。`);
+      } else {
+        alert('インポートされたデータはすべて既に登録されています。');
+      }
+    } else {
+      alert('有効なデータがありませんでした。');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-8 flex flex-col items-center">
       <header className="w-full max-w-4xl mb-8 text-center relative">
@@ -711,6 +736,19 @@ export default function Home() {
           <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
             為替レート: <span className="font-bold text-blue-600 dark:text-blue-400">1ドル = {exchangeRate.toLocaleString()} 円</span>
           </p>
+        </div>
+        
+        {/* データ転送ボタンを追加 */}
+        <div className="mt-4">
+          <button
+            onClick={() => setIsDataTransferModalOpen(true)}
+            className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full hover:from-indigo-600 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg flex items-center mx-auto"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            データ転送（QRコード）
+          </button>
         </div>
       </header>
 
@@ -1521,6 +1559,14 @@ export default function Home() {
       <footer className="mt-auto pt-8 pb-4 text-center text-sm text-gray-500">
         <p>© {new Date().getFullYear()} アセットバランサー - Next.jsで作成</p>
       </footer>
+      
+      {/* データ転送モーダル */}
+      <DataTransferModal
+        isOpen={isDataTransferModalOpen}
+        onClose={() => setIsDataTransferModalOpen(false)}
+        stockList={stockList}
+        onImport={handleImportData}
+      />
     </div>
   );
 }
