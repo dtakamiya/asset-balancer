@@ -1675,13 +1675,13 @@ export default function Home() {
           
           {stockList.length > 0 ? (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto sm:overflow-visible md:overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
                       <th 
                         scope="col" 
-                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[15%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[12%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                         onClick={() => requestSort('code')}
                       >
                         <div className="flex items-center">
@@ -1695,7 +1695,7 @@ export default function Home() {
                       </th>
                       <th 
                         scope="col" 
-                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[20%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[25%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                         onClick={() => requestSort('name')}
                       >
                         <div className="flex items-center">
@@ -1709,7 +1709,7 @@ export default function Home() {
                       </th>
                       <th 
                         scope="col" 
-                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[15%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[13%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                         onClick={() => requestSort('price')}
                       >
                         <div className="flex items-center justify-end">
@@ -1723,7 +1723,7 @@ export default function Home() {
                       </th>
                       <th 
                         scope="col" 
-                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[15%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[13%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                         onClick={() => requestSort('shares')}
                       >
                         <div className="flex items-center">
@@ -1737,7 +1737,7 @@ export default function Home() {
                       </th>
                       <th 
                         scope="col" 
-                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[20%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[17%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                         onClick={() => requestSort('value')}
                       >
                         <div className="flex items-center justify-end">
@@ -1786,7 +1786,7 @@ export default function Home() {
                         <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                           {stock.code}
                         </td>
-                        <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 truncate">{stock.name || '-'}</td>
+                        <td className="px-3 py-3 text-sm text-gray-700 dark:text-gray-300 break-words">{stock.name || '-'}</td>
                         <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right">
                           {stock.price ? (
                             <span>
