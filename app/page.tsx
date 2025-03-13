@@ -1022,7 +1022,6 @@ export default function Home() {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">銘柄コード</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">銘柄名</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">現在値</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">前日比</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">所有数</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">評価額</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">投資国</th>
@@ -1052,13 +1051,6 @@ export default function Home() {
                         {stock.price ? (
                           <span>
                             {stock.isUSStock ? '$' : '¥'}{stock.price.toLocaleString()}
-                          </span>
-                        ) : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {stock.priceChange ? (
-                          <span className={`${stock.priceChange > 0 ? 'text-green-600 dark:text-green-400' : stock.priceChange < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                            {stock.priceChange > 0 ? '+' : ''}{stock.priceChange.toLocaleString()} ({stock.priceChangePercent}%)
                           </span>
                         ) : '-'}
                       </td>
