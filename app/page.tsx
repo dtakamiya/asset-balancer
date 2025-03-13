@@ -628,33 +628,6 @@ export default function Home() {
                 </div>
               </div>
               
-              {/* 投資信託の場合は国の選択肢を表示 */}
-              {isFund && (
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">分類:</span>
-                  <div className="flex items-center space-x-4">
-                    <label className="inline-flex items-center">
-                      <input
-                        type="radio"
-                        className="form-radio h-4 w-4 text-blue-600"
-                        checked={country === 'JP'}
-                        onChange={() => setCountry('JP')}
-                      />
-                      <span className="ml-2">日本</span>
-                    </label>
-                    <label className="inline-flex items-center">
-                      <input
-                        type="radio"
-                        className="form-radio h-4 w-4 text-blue-600"
-                        checked={country === 'US'}
-                        onChange={() => setCountry('US')}
-                      />
-                      <span className="ml-2">米国</span>
-                    </label>
-                  </div>
-                </div>
-              )}
-              
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="stockCode" className="block text-sm font-medium mb-1">
@@ -1077,16 +1050,16 @@ export default function Home() {
                   <div className="space-y-2">
                     <div>
                       <span className="text-gray-600 dark:text-gray-300">現在値:</span>
-                      <span className="ml-2 text-xl font-bold">{stockData.yahoo.price}</span>
-                      {stockData.yahoo.priceInJPY && (
-                        <div className="text-sm text-gray-600 dark:text-gray-300 ml-2">
-                          円換算: {stockData.yahoo.priceInJPY}
-                        </div>
-                      )}
+                        <span className="ml-2 text-xl font-bold">{stockData.yahoo.price}</span>
+                        {stockData.yahoo.priceInJPY && (
+                          <div className="text-sm text-gray-600 dark:text-gray-300 ml-2">
+                            円換算: {stockData.yahoo.priceInJPY}
+                          </div>
+                        )}
                     </div>
                     <div>
                       <span className="text-gray-600 dark:text-gray-300">前日比:</span>
-                      <span className="ml-2">{stockData.yahoo.change}</span>
+                        <span className="ml-2">{stockData.yahoo.change}</span>
                     </div>
                   </div>
                 </div>
@@ -1106,16 +1079,16 @@ export default function Home() {
                   <div className="space-y-2">
                     <div>
                       <span className="text-gray-600 dark:text-gray-300">現在値:</span>
-                      <span className="ml-2 text-xl font-bold">{stockData.google.price}</span>
-                      {stockData.google.priceInJPY && (
-                        <div className="text-sm text-gray-600 dark:text-gray-300 ml-2">
-                          円換算: {stockData.google.priceInJPY}
-                        </div>
-                      )}
+                        <span className="ml-2 text-xl font-bold">{stockData.google.price}</span>
+                        {stockData.google.priceInJPY && (
+                          <div className="text-sm text-gray-600 dark:text-gray-300 ml-2">
+                            円換算: {stockData.google.priceInJPY}
+                          </div>
+                        )}
                     </div>
                     <div>
                       <span className="text-gray-600 dark:text-gray-300">前日比:</span>
-                      <span className="ml-2">{stockData.google.change}</span>
+                        <span className="ml-2">{stockData.google.change}</span>
                     </div>
                   </div>
                 </div>
