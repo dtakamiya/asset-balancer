@@ -147,30 +147,38 @@ export default function Home() {
         clearInterval(intervalId);
       }
     };
-  }, [autoRefresh, stockList.length, refreshInterval]); // refreshIntervalを依存配列に追加
+  }, [autoRefresh, stockList.length, refreshInterval, loading]); // loadingを依存配列に追加
 
   // 自動更新設定の保存
   useEffect(() => {
+    console.log('自動更新設定を保存: autoRefresh=', autoRefresh, 'refreshInterval=', refreshInterval);
     localStorage.setItem('autoRefresh', autoRefresh.toString());
     localStorage.setItem('refreshInterval', refreshInterval.toString());
   }, [autoRefresh, refreshInterval]);
 
-  // 初期化時に自動更新設定を読み込む
+  // 自動更新設定の読み込み
   useEffect(() => {
     const savedAutoRefresh = localStorage.getItem('autoRefresh');
+    const savedRefreshInterval = localStorage.getItem('refreshInterval');
+    
     if (savedAutoRefresh !== null) {
-      setAutoRefresh(savedAutoRefresh === 'true');
+      const parsedAutoRefresh = savedAutoRefresh === 'true';
+      console.log('自動更新設定を読み込み: 保存された値=', savedAutoRefresh, '解析後=', parsedAutoRefresh);
+      setAutoRefresh(parsedAutoRefresh);
     }
     
-    const savedRefreshInterval = localStorage.getItem('refreshInterval');
-    if (savedRefreshInterval !== null && !isNaN(Number(savedRefreshInterval))) {
-      setRefreshInterval(Number(savedRefreshInterval));
+    if (savedRefreshInterval !== null) {
+      const parsedInterval = parseInt(savedRefreshInterval, 10);
+      console.log('更新間隔を読み込み: 保存された値=', savedRefreshInterval, '解析後=', parsedInterval);
+      setRefreshInterval(parsedInterval);
     }
     
     // 目標比率の読み込み
     const savedTargetRatio = localStorage.getItem('targetRatio');
     if (savedTargetRatio !== null && !isNaN(Number(savedTargetRatio))) {
-      setTargetRatio(Number(savedTargetRatio));
+      const parsedRatio = Number(savedTargetRatio);
+      console.log('目標比率を読み込み: 保存された値=', savedTargetRatio, '解析後=', parsedRatio);
+      setTargetRatio(parsedRatio);
     }
   }, []);
 
@@ -495,7 +503,9 @@ export default function Home() {
 
   // 自動更新の切り替え
   const toggleAutoRefresh = () => {
-    setAutoRefresh(!autoRefresh);
+    const newState = !autoRefresh;
+    console.log('自動更新を切り替え: 現在の状態=', autoRefresh, ' → 新しい状態=', newState);
+    setAutoRefresh(newState);
   };
 
   // 更新間隔の変更
