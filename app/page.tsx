@@ -1238,13 +1238,6 @@ export default function Home() {
               {/* リバランス計算結果 */}
               {totalValue > 0 && (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 p-4 sm:p-5 rounded-lg shadow-sm">
-                  <h5 className="font-semibold mb-3 text-gray-900 dark:text-white flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    リバランス分析
-                  </h5>
-                  
                   {(() => {
                     // 現在の比率
                     const currentJpRatio = totalJpValue / totalValue * 100;
@@ -1269,26 +1262,8 @@ export default function Home() {
                     
                     return (
                       <div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                          <div>
-                            <div className="text-sm text-gray-900 dark:text-gray-200">日本投資（現在）</div>
-                            <div className="font-semibold text-gray-900 dark:text-white">{totalJpValue.toLocaleString()}円 ({(currentJpRatio).toFixed(1)}%)</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-900 dark:text-gray-200">米国投資（現在）</div>
-                            <div className="font-semibold text-gray-900 dark:text-white">{totalUsValue.toLocaleString()}円 ({(currentUsRatio).toFixed(1)}%)</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-900 dark:text-gray-200">日本投資（目標）</div>
-                            <div className="font-semibold text-gray-900 dark:text-white">{Math.round(targetJpAmount).toLocaleString()}円 ({targetRatio}%)</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-900 dark:text-gray-200">米国投資（目標）</div>
-                            <div className="font-semibold text-gray-900 dark:text-white">{Math.round(targetUsAmount).toLocaleString()}円 ({100 - targetRatio}%)</div>
-                          </div>
-                        </div>
-                        
-                        <div className="mt-4 p-3 sm:p-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-lg shadow-md border-l-4 border-blue-500 dark:border-blue-400">
+                        {/* リバランス推奨アクション - リバランス分析の上に移動 */}
+                        <div className="mb-4 p-3 sm:p-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-lg shadow-md border-l-4 border-blue-500 dark:border-blue-400">
                           <h6 className="font-bold mb-3 text-base sm:text-lg text-gray-900 dark:text-white flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -1331,6 +1306,32 @@ export default function Home() {
                               </p>
                             </div>
                           )}
+                        </div>
+
+                        <h5 className="font-semibold mb-3 text-gray-900 dark:text-white flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                          リバランス分析
+                        </h5>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <div className="text-sm text-gray-900 dark:text-gray-200">日本投資（現在）</div>
+                            <div className="font-semibold text-gray-900 dark:text-white">{totalJpValue.toLocaleString()}円 ({(currentJpRatio).toFixed(1)}%)</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-900 dark:text-gray-200">米国投資（現在）</div>
+                            <div className="font-semibold text-gray-900 dark:text-white">{totalUsValue.toLocaleString()}円 ({(currentUsRatio).toFixed(1)}%)</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-900 dark:text-gray-200">日本投資（目標）</div>
+                            <div className="font-semibold text-gray-900 dark:text-white">{Math.round(targetJpAmount).toLocaleString()}円 ({targetRatio}%)</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-900 dark:text-gray-200">米国投資（目標）</div>
+                            <div className="font-semibold text-gray-900 dark:text-white">{Math.round(targetUsAmount).toLocaleString()}円 ({100 - targetRatio}%)</div>
+                          </div>
                         </div>
                       </div>
                     );
