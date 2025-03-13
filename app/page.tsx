@@ -1163,41 +1163,41 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="w-full max-w-4xl flex flex-col items-center">
+      <main className="w-full max-w-4xl flex flex-col items-center px-3 sm:px-4">
         {/* 投資額サマリー - 銘柄を登録の上に移動 */}
         {totalValue > 0 && (
-          <div className="w-full mb-8 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl">
-            <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-2 flex justify-between items-center">
+          <div className="w-full mb-8 bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl">
+            <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-2 flex flex-col sm:flex-row sm:justify-between sm:items-center">
               <span>投資額サマリー</span>
               {lastUpdatedTime && (
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-normal">
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-normal mt-1 sm:mt-0">
                   最終更新: {lastUpdatedTime}
                 </span>
               )}
             </h3>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 p-5 rounded-lg text-center shadow-sm transition-transform duration-300 hover:scale-105">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 p-4 sm:p-5 rounded-lg text-center shadow-sm transition-transform duration-300 hover:scale-105">
                 <div className="text-sm text-gray-600 dark:text-gray-300 font-medium">合計投資額</div>
-                <div className="text-2xl font-bold mt-2 text-gray-800 dark:text-white">{totalValue.toLocaleString()}円</div>
-                <div className="text-sm mt-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full px-2 py-0.5 inline-block">100%</div>
+                <div className="text-xl sm:text-2xl font-bold mt-2 text-gray-800 dark:text-white">{totalValue.toLocaleString()}円</div>
+                <div className="text-xs sm:text-sm mt-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full px-2 py-0.5 inline-block">100%</div>
               </div>
               
-              <div className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/30 p-5 rounded-lg text-center shadow-sm transition-transform duration-300 hover:scale-105">
+              <div className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/30 p-4 sm:p-5 rounded-lg text-center shadow-sm transition-transform duration-300 hover:scale-105">
                 <div className="text-sm text-gray-600 dark:text-gray-300 font-medium">日本投資額</div>
-                <div className="text-2xl font-bold mt-2 text-red-600 dark:text-red-400">
+                <div className="text-xl sm:text-2xl font-bold mt-2 text-red-600 dark:text-red-400">
                   {totalJpValue.toLocaleString()}円
                 </div>
-                <div className="text-sm mt-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-full px-2 py-0.5 inline-block">
+                <div className="text-xs sm:text-sm mt-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-full px-2 py-0.5 inline-block">
                   {((totalJpValue / totalValue) * 100).toFixed(1)}%
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 p-5 rounded-lg text-center shadow-sm transition-transform duration-300 hover:scale-105">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 p-4 sm:p-5 rounded-lg text-center shadow-sm transition-transform duration-300 hover:scale-105">
                 <div className="text-sm text-gray-600 dark:text-gray-300 font-medium">米国投資額</div>
-                <div className="text-2xl font-bold mt-2 text-blue-600 dark:text-blue-400">
+                <div className="text-xl sm:text-2xl font-bold mt-2 text-blue-600 dark:text-blue-400">
                   {totalUsValue.toLocaleString()}円
                 </div>
-                <div className="text-sm mt-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full px-2 py-0.5 inline-block">
+                <div className="text-xs sm:text-sm mt-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full px-2 py-0.5 inline-block">
                   {((totalUsValue / totalValue) * 100).toFixed(1)}%
                 </div>
               </div>
@@ -1212,7 +1212,7 @@ export default function Home() {
                 リバランス設定
               </h4>
               <div className="flex flex-col md:flex-row md:items-center mb-4 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
-                <div className="mr-4 mb-2 md:mb-0">
+                <div className="mr-4 mb-3 md:mb-0">
                   <span className="text-sm text-gray-600 dark:text-gray-300">目標比率: </span>
                   <span className="font-semibold text-gray-800 dark:text-gray-200">
                     <span className="text-red-600 dark:text-red-400">日本 {targetRatio}%</span> : <span className="text-blue-600 dark:text-blue-400">米国 {100 - targetRatio}%</span>
@@ -1237,7 +1237,7 @@ export default function Home() {
               
               {/* リバランス計算結果 */}
               {totalValue > 0 && (
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 p-5 rounded-lg shadow-sm">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 p-4 sm:p-5 rounded-lg shadow-sm">
                   <h5 className="font-semibold mb-3 text-gray-900 dark:text-white flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -1269,7 +1269,7 @@ export default function Home() {
                     
                     return (
                       <div>
-                        <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                           <div>
                             <div className="text-sm text-gray-900 dark:text-gray-200">日本投資（現在）</div>
                             <div className="font-semibold text-gray-900 dark:text-white">{totalJpValue.toLocaleString()}円 ({(currentJpRatio).toFixed(1)}%)</div>
@@ -1288,39 +1288,39 @@ export default function Home() {
                           </div>
                         </div>
                         
-                        <div className="mt-4 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-lg shadow-md border-l-4 border-blue-500 dark:border-blue-400">
-                          <h6 className="font-bold mb-3 text-lg text-gray-900 dark:text-white flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div className="mt-4 p-3 sm:p-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-lg shadow-md border-l-4 border-blue-500 dark:border-blue-400">
+                          <h6 className="font-bold mb-3 text-base sm:text-lg text-gray-900 dark:text-white flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                             </svg>
                             リバランス推奨アクション
                           </h6>
                           {Math.abs(jpDifference) < 10000 && Math.abs(usDifference) < 10000 ? (
-                            <div className="bg-green-100 dark:bg-green-900/30 p-4 rounded-lg">
+                            <div className="bg-green-100 dark:bg-green-900/30 p-3 sm:p-4 rounded-lg">
                               <p className="text-green-600 dark:text-green-400 font-medium text-center">
                                 現在のポートフォリオは目標比率に近いため、リバランス不要です。
                               </p>
 
-                              <p className="text-green-800 dark:text-green-300 font-bold text-center text-lg">
+                              <p className="text-green-800 dark:text-green-300 font-bold text-center text-base sm:text-lg">
                                 現在のポートフォリオは目標比率に近いため、リバランス不要です。
                               </p>
                             </div>
                           ) : (
-                            <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-lg">
+                            <div className="bg-blue-100 dark:bg-blue-900/30 p-3 sm:p-4 rounded-lg">
                               {totalJpValue < totalUsValue ? (
                                 <div className="text-center">
-                                  <p className="mb-3 text-gray-900 dark:text-white text-lg">
-                                    <span className="font-extrabold text-red-700 dark:text-red-300 block text-2xl mb-3">日本投資を追加</span>
-                                    <span className="bg-white dark:bg-gray-800 px-6 py-3 rounded-lg inline-block font-bold text-xl text-red-800 dark:text-red-300 shadow-md">
+                                  <p className="mb-3 text-gray-900 dark:text-white text-base sm:text-lg">
+                                    <span className="font-extrabold text-red-700 dark:text-red-300 block text-xl sm:text-2xl mb-2 sm:mb-3">日本投資を追加</span>
+                                    <span className="bg-white dark:bg-gray-800 px-4 sm:px-6 py-2 sm:py-3 rounded-lg inline-block font-bold text-lg sm:text-xl text-red-800 dark:text-red-300 shadow-md">
                                       {Math.abs(Math.round(totalUsValue - totalJpValue)).toLocaleString()}円
                                     </span>
                                   </p>
                                 </div>
                               ) : (
                                 <div className="text-center">
-                                  <p className="mb-3 text-gray-900 dark:text-white text-lg">
-                                    <span className="font-extrabold text-blue-700 dark:text-blue-300 block text-2xl mb-3">米国投資を追加</span>
-                                    <span className="bg-white dark:bg-gray-800 px-6 py-3 rounded-lg inline-block font-bold text-xl text-red-800 dark:text-red-300 shadow-md">
+                                  <p className="mb-3 text-gray-900 dark:text-white text-base sm:text-lg">
+                                    <span className="font-extrabold text-blue-700 dark:text-blue-300 block text-xl sm:text-2xl mb-2 sm:mb-3">米国投資を追加</span>
+                                    <span className="bg-white dark:bg-gray-800 px-4 sm:px-6 py-2 sm:py-3 rounded-lg inline-block font-bold text-lg sm:text-xl text-red-800 dark:text-red-300 shadow-md">
                                       {Math.abs(Math.round(totalUsValue - totalJpValue)).toLocaleString()}円
                                     </span>
                                   </p>
