@@ -238,16 +238,20 @@ export default function Home() {
 
     console.log('合計評価額計算開始:');
     stockList.forEach(stock => {
-      console.log(`${stock.code}: 種別=${stock.type}, 国=${stock.country}, 通貨=${stock.currency}, 評価額=${stock.value || 0}円`);
+      // 数字のみの銘柄コードは日本株として扱う（通貨計算のみ）
+      const isNumericCode = /^\d+$/.test(stock.code);
+      const shouldCalculateAsJP = isNumericCode;
+      
+      console.log(`${stock.code}: 種別=${stock.type}, 国=${stock.country}, 通貨=${stock.currency}, 評価額=${stock.value || 0}円, 数字のみ=${isNumericCode}`);
       
       if (stock.value) {
-        // 投資国だけに基づいて分類
-        if (stock.country === 'US') {
+        // 投資国に基づいて分類（ただし数字のみの銘柄コードは日本投資として計算）
+        if (stock.country === 'US' && !shouldCalculateAsJP) {
           totalUs += stock.value;
           console.log(`  → 米国投資に加算: ${stock.value}円`);
         } else {
           totalJp += stock.value;
-          console.log(`  → 日本投資に加算: ${stock.value}円`);
+          console.log(`  → 日本投資に加算: ${stock.value}円${shouldCalculateAsJP ? ' (数字のみの銘柄コード)' : ''}`);
         }
       }
     });
@@ -320,6 +324,10 @@ export default function Home() {
           } else {
             // 株式の場合
             const isUS = stock.country === 'US';
+            // 数字のみの銘柄コードは日本株として扱う（通貨計算のみ）
+            const isNumericCode = /^\d+$/.test(stock.code);
+            const shouldCalculateAsJP = isNumericCode;
+            
             const response = await fetch(`/api/stock?code=${stock.code}&isUSStock=${isUS}`);
             const data = await response.json();
             
@@ -338,28 +346,28 @@ export default function Home() {
                 price = data.google.price;
               }
               
-              // 米国株の場合
-              if (isUS) {
+              // 米国株の場合（ただし数字のみの銘柄コードは日本円で計算）
+              if (isUS && !shouldCalculateAsJP) {
                 // 米国株の場合は円換算（四捨五入）
                 value = Math.round(numericPrice * stock.shares * exchangeRate);
                 priceInJPY = numericPrice > 0 ? `${numericPrice.toLocaleString()} ドル (${(numericPrice * exchangeRate).toLocaleString()} 円)` : '未取得';
               } else {
-                // 日本株の場合はそのまま（四捨五入）
+                // 日本株または数字のみの銘柄コードの場合はそのまま（四捨五入）
                 value = Math.round(numericPrice * stock.shares);
                 priceInJPY = '';
               }
               
-              console.log(`${stock.code}の通貨: ${data.currency}, 国の区分: ${stock.country}, 評価額: ${value}円`);
+              console.log(`${stock.code}の通貨: ${shouldCalculateAsJP ? 'JPY (数字のみの銘柄コード)' : data.currency}, 国の区分: ${stock.country}, 評価額: ${value}円`);
               
               updatedList[i] = {
                 ...stock,
                 price: price,
                 priceInJPY: priceInJPY,
                 value: value,
-                currency: data.currency,
+                currency: shouldCalculateAsJP ? 'JPY' : data.currency,
                 lastUpdated: new Date().toLocaleString(),
                 type: originalType, // 元の種別を明示的に保持
-                country: stock.country // 通貨に基づいて国の区分を設定
+                country: stock.country // 投資国の設定は変更しない
               };
             }
           }
@@ -463,6 +471,9 @@ export default function Home() {
     }
     
     const isUS = isUSStock || (country === 'US');
+    // 数字のみの銘柄コードは日本株として扱う（通貨計算のみ）
+    const isNumericCode = /^\d+$/.test(stockCode);
+    const shouldCalculateAsJP = isNumericCode;
     
     // 新しい株式を追加
     setStockList([
@@ -473,7 +484,7 @@ export default function Home() {
         shares: parseInt(shares, 10),
         price: 0,
         value: 0,
-        currency: isUS ? 'USD' : 'JPY',
+        currency: shouldCalculateAsJP ? 'JPY' : (isUS ? 'USD' : 'JPY'),
         type: isFund ? 'fund' : 'stock', // 種別を追加
         name: isFund ? '投資信託' : '',
         country: country, // ユーザーが選択した投資国をそのまま使用
