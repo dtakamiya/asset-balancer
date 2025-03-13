@@ -664,6 +664,134 @@ export default function Home() {
           </div>
         </form>
 
+        {/* 投資額サマリー - 情報検索ボタンの下に移動 */}
+        {totalValue > 0 && (
+          <div className="w-full mb-8 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+            <h3 className="text-lg font-semibold mb-4">投資額サマリー</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg text-center">
+                <div className="text-sm text-gray-600 dark:text-gray-300">合計投資額</div>
+                <div className="text-2xl font-bold mt-1">{totalValue.toLocaleString()}円</div>
+                <div className="text-sm mt-1">100%</div>
+              </div>
+              
+              <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg text-center">
+                <div className="text-sm text-gray-600 dark:text-gray-300">日本投資額</div>
+                <div className="text-2xl font-bold mt-1">
+                  {totalJpValue.toLocaleString()}円
+                </div>
+                <div className="text-sm mt-1">
+                  {Math.round((totalJpValue / totalValue) * 100)}%
+                </div>
+              </div>
+              
+              <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg text-center">
+                <div className="text-sm text-gray-600 dark:text-gray-300">米国投資額</div>
+                <div className="text-2xl font-bold mt-1">
+                  {totalUsValue.toLocaleString()}円
+                </div>
+                <div className="text-sm mt-1">
+                  {Math.round((totalUsValue / totalValue) * 100)}%
+                </div>
+              </div>
+            </div>
+            
+            {/* リバランス設定 */}
+            <div className="mt-6">
+              <h4 className="text-md font-semibold mb-2">リバランス設定</h4>
+              <div className="flex items-center mb-4">
+                <div className="mr-4">
+                  <span className="text-sm text-gray-600 dark:text-gray-300">目標比率: </span>
+                  <span className="font-semibold">日本 {targetRatio}% : 米国 {100 - targetRatio}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  value={targetRatio} 
+                  onChange={(e) => setTargetRatio(Number(e.target.value))}
+                  className="w-40 h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
+              
+              {/* リバランス計算結果 */}
+              {totalValue > 0 && (
+                <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
+                  <h5 className="font-semibold mb-2 text-gray-900 dark:text-white">リバランス分析</h5>
+                  
+                  {(() => {
+                    // 現在の比率
+                    const currentJpRatio = totalJpValue / totalValue * 100;
+                    const currentUsRatio = totalUsValue / totalValue * 100;
+                    
+                    // 目標金額
+                    const targetJpAmount = totalValue * (targetRatio / 100);
+                    const targetUsAmount = totalValue * ((100 - targetRatio) / 100);
+                    
+                    // 差額
+                    const jpDifference = targetJpAmount - totalJpValue;
+                    const usDifference = targetUsAmount - totalUsValue;
+                    
+                    // デバッグ用に実際の差額を表示
+                    console.log(`日本投資の差額: ${jpDifference.toLocaleString()}円`);
+                    console.log(`米国投資の差額: ${usDifference.toLocaleString()}円`);
+                    
+                    // 特定の値を表示するための調整（デモ用）
+                    // 実際の計算値ではなく、指定された値を表示
+                    const displayJpDifference = jpDifference < 0 ? jpDifference : 12005256;
+                    const displayUsDifference = jpDifference < 0 ? -12005256 : usDifference;
+                    
+                    return (
+                      <div>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <div className="text-sm text-gray-900 dark:text-gray-200">日本投資（現在）</div>
+                            <div className="font-semibold text-gray-900 dark:text-white">{totalJpValue.toLocaleString()}円 ({Math.round(currentJpRatio)}%)</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-900 dark:text-gray-200">米国投資（現在）</div>
+                            <div className="font-semibold text-gray-900 dark:text-white">{totalUsValue.toLocaleString()}円 ({Math.round(currentUsRatio)}%)</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-900 dark:text-gray-200">日本投資（目標）</div>
+                            <div className="font-semibold text-gray-900 dark:text-white">{Math.round(targetJpAmount).toLocaleString()}円 ({targetRatio}%)</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-900 dark:text-gray-200">米国投資（目標）</div>
+                            <div className="font-semibold text-gray-900 dark:text-white">{Math.round(targetUsAmount).toLocaleString()}円 ({100 - targetRatio}%)</div>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg">
+                          <h6 className="font-semibold mb-2 text-gray-900 dark:text-white">リバランス推奨アクション</h6>
+                          {Math.abs(jpDifference) < 10000 && Math.abs(usDifference) < 10000 ? (
+                            <p className="text-green-600 dark:text-green-400">現在のポートフォリオは目標比率に近いため、リバランス不要です。</p>
+                          ) : (
+                            <div>
+                              {totalJpValue < totalUsValue ? (
+                                <p className="mb-2 text-gray-900 dark:text-white">
+                                  <span className="font-semibold text-blue-600 dark:text-blue-400">日本投資を{Math.abs(Math.round(totalUsValue - totalJpValue)).toLocaleString()}円分追加</span>してください。
+                                </p>
+                              ) : (
+                                <p className="mb-2 text-gray-900 dark:text-white">
+                                  <span className="font-semibold text-blue-600 dark:text-blue-400">米国投資を{Math.abs(Math.round(totalJpValue - totalUsValue)).toLocaleString()}円分追加</span>してください。
+                                </p>
+                              )}
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                                ※ 売却せずに不足分を購入することでリバランスを行います。
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 保有銘柄リスト */}
         <div className="w-full mb-8">
           <div className="flex justify-between items-center mb-4">
@@ -713,134 +841,6 @@ export default function Home() {
               </button>
             </div>
           </div>
-          
-          {/* 投資額サマリー - 保有銘柄リストの上に移動 */}
-          {totalValue > 0 && (
-            <div className="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-4">投資額サマリー</h3>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg text-center">
-                  <div className="text-sm text-gray-600 dark:text-gray-300">合計投資額</div>
-                  <div className="text-2xl font-bold mt-1">{totalValue.toLocaleString()}円</div>
-                  <div className="text-sm mt-1">100%</div>
-                </div>
-                
-                <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg text-center">
-                  <div className="text-sm text-gray-600 dark:text-gray-300">日本投資額</div>
-                  <div className="text-2xl font-bold mt-1">
-                    {totalJpValue.toLocaleString()}円
-                  </div>
-                  <div className="text-sm mt-1">
-                    {Math.round((totalJpValue / totalValue) * 100)}%
-                  </div>
-                </div>
-                
-                <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg text-center">
-                  <div className="text-sm text-gray-600 dark:text-gray-300">米国投資額</div>
-                  <div className="text-2xl font-bold mt-1">
-                    {totalUsValue.toLocaleString()}円
-                  </div>
-                  <div className="text-sm mt-1">
-                    {Math.round((totalUsValue / totalValue) * 100)}%
-                  </div>
-                </div>
-              </div>
-              
-              {/* リバランス設定 */}
-              <div className="mt-6">
-                <h4 className="text-md font-semibold mb-2">リバランス設定</h4>
-                <div className="flex items-center mb-4">
-                  <div className="mr-4">
-                    <span className="text-sm text-gray-600 dark:text-gray-300">目標比率: </span>
-                    <span className="font-semibold">日本 {targetRatio}% : 米国 {100 - targetRatio}%</span>
-                  </div>
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="100" 
-                    value={targetRatio} 
-                    onChange={(e) => setTargetRatio(Number(e.target.value))}
-                    className="w-40 h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
-                
-                {/* リバランス計算結果 */}
-                {totalValue > 0 && (
-                  <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
-                    <h5 className="font-semibold mb-2 text-gray-900 dark:text-white">リバランス分析</h5>
-                    
-                    {(() => {
-                      // 現在の比率
-                      const currentJpRatio = totalJpValue / totalValue * 100;
-                      const currentUsRatio = totalUsValue / totalValue * 100;
-                      
-                      // 目標金額
-                      const targetJpAmount = totalValue * (targetRatio / 100);
-                      const targetUsAmount = totalValue * ((100 - targetRatio) / 100);
-                      
-                      // 差額
-                      const jpDifference = targetJpAmount - totalJpValue;
-                      const usDifference = targetUsAmount - totalUsValue;
-                      
-                      // デバッグ用に実際の差額を表示
-                      console.log(`日本投資の差額: ${jpDifference.toLocaleString()}円`);
-                      console.log(`米国投資の差額: ${usDifference.toLocaleString()}円`);
-                      
-                      // 特定の値を表示するための調整（デモ用）
-                      // 実際の計算値ではなく、指定された値を表示
-                      const displayJpDifference = jpDifference < 0 ? jpDifference : 12005256;
-                      const displayUsDifference = jpDifference < 0 ? -12005256 : usDifference;
-                      
-                      return (
-                        <div>
-                          <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <div className="text-sm text-gray-900 dark:text-gray-200">日本投資（現在）</div>
-                              <div className="font-semibold text-gray-900 dark:text-white">{totalJpValue.toLocaleString()}円 ({Math.round(currentJpRatio)}%)</div>
-                            </div>
-                            <div>
-                              <div className="text-sm text-gray-900 dark:text-gray-200">米国投資（現在）</div>
-                              <div className="font-semibold text-gray-900 dark:text-white">{totalUsValue.toLocaleString()}円 ({Math.round(currentUsRatio)}%)</div>
-                            </div>
-                            <div>
-                              <div className="text-sm text-gray-900 dark:text-gray-200">日本投資（目標）</div>
-                              <div className="font-semibold text-gray-900 dark:text-white">{Math.round(targetJpAmount).toLocaleString()}円 ({targetRatio}%)</div>
-                            </div>
-                            <div>
-                              <div className="text-sm text-gray-900 dark:text-gray-200">米国投資（目標）</div>
-                              <div className="font-semibold text-gray-900 dark:text-white">{Math.round(targetUsAmount).toLocaleString()}円 ({100 - targetRatio}%)</div>
-                            </div>
-                          </div>
-                          
-                          <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg">
-                            <h6 className="font-semibold mb-2 text-gray-900 dark:text-white">リバランス推奨アクション</h6>
-                            {Math.abs(jpDifference) < 10000 && Math.abs(usDifference) < 10000 ? (
-                              <p className="text-green-600 dark:text-green-400">現在のポートフォリオは目標比率に近いため、リバランス不要です。</p>
-                            ) : (
-                              <div>
-                                {totalJpValue < totalUsValue ? (
-                                  <p className="mb-2 text-gray-900 dark:text-white">
-                                    <span className="font-semibold text-blue-600 dark:text-blue-400">日本投資を{Math.abs(Math.round(totalUsValue - totalJpValue)).toLocaleString()}円分追加</span>してください。
-                                  </p>
-                                ) : (
-                                  <p className="mb-2 text-gray-900 dark:text-white">
-                                    <span className="font-semibold text-blue-600 dark:text-blue-400">米国投資を{Math.abs(Math.round(totalJpValue - totalUsValue)).toLocaleString()}円分追加</span>してください。
-                                  </p>
-                                )}
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                                  ※ 売却せずに不足分を購入することでリバランスを行います。
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
           
           {stockList.length === 0 ? (
             <p className="text-gray-500 text-center py-4">登録された銘柄はありません</p>
