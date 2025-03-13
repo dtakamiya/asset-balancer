@@ -462,7 +462,7 @@ export default function Home() {
           currency: isFund ? 'JPY' : (isUS ? 'USD' : 'JPY'), // 通貨情報を追加
           type: isFund ? 'fund' : 'stock', // 種別を追加
           name: isFund ? '投資信託' : undefined, // 投資信託の場合は名前を保存
-          country: isFund ? country : (isUS ? 'US' : 'JP') // 国の区分を追加（米国株の場合は'US'）
+          country: country // ユーザーが選択した投資国をそのまま使用
         }
       ]);
     }
