@@ -26,7 +26,6 @@ interface StockItem {
   isUSStock?: boolean;
   priceChange?: number;
   priceChangePercent?: string;
-  userSetCountry?: boolean;
 }
 
 // DataTransferModalをインポート
@@ -37,89 +36,82 @@ export default function Home() {
   const [stockCode, setStockCode] = useState('');
   const [stockName, setStockName] = useState('');
   const [shares, setShares] = useState('');
-  // 保有株式リスト
   const [stockList, setStockList] = useState<StockItem[]>([]);
   const [stockData, setStockData] = useState<any>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [totalValue, setTotalValue] = useState(0);
+  const [totalJpValue, setTotalJpValue] = useState(0);
+  const [totalUsValue, setTotalUsValue] = useState(0);
+  const [exchangeRate, setExchangeRate] = useState(150);
+  const [lastUpdatedTime, setLastUpdatedTime] = useState('');
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [refreshInterval, setRefreshInterval] = useState(300000); // デフォルト5分
+  const [sortConfig, setSortConfig] = useState<{ key: keyof StockItem; direction: string } | null>(null);
+  const [targetRatio, setTargetRatio] = useState(50); // デフォルト50%
+  const [stockType, setStockType] = useState<'stock' | 'fund'>('stock');
+  const [country, setCountry] = useState<'JP' | 'US'>('JP');
+  const lastImportedStocksRef = useRef<StockItem[]>([]);
+  
+  // 保有株式リスト
+  const [stockList, setStockList] = useState<StockItem[]>([]);
   // 合計評価額
   const [totalValue, setTotalValue] = useState(0);
   // 日本と米国の合計投資額
   const [totalJpValue, setTotalJpValue] = useState(0);
   const [totalUsValue, setTotalUsValue] = useState(0);
-  const [exchangeRate, setExchangeRate] = useState(150);
+  // リバランス情報
+  const [targetRatio, setTargetRatio] = useState(50); // 目標比率（デフォルト50%）
+  // 編集中の所有数
+  const [editingShares, setEditingShares] = useState<{[key: string]: string}>({});
+  // 最近更新された株式ID
+  const [recentlyUpdated, setRecentlyUpdated] = useState<string | null>(null);
   // 最終更新時刻
   const [lastUpdatedTime, setLastUpdatedTime] = useState<string>('');
-  const [autoRefresh, setAutoRefresh] = useState(false);
-  const [refreshInterval, setRefreshInterval] = useState(300000); // デフォルト5分
   // ソート設定
   const [sortConfig, setSortConfig] = useState<{key: keyof StockItem | ''; direction: 'ascending' | 'descending' | ''}>({
     key: '',
     direction: ''
   });
-  // リバランス情報
-  const [targetRatio, setTargetRatio] = useState(50); // 目標比率（デフォルト50%）
-  const [stockType, setStockType] = useState<'stock' | 'fund'>('stock');
-  const [country, setCountry] = useState<'JP' | 'US'>('JP');
-  const [isFund, setIsFund] = useState(false);
-  const [isUSStock, setIsUSStock] = useState(false);
-  const lastImportedStocksRef = useRef<StockItem[]>([]);
-  // 編集中の所有数
-  const [editingShares, setEditingShares] = useState<{[key: string]: string}>({});
-  // 最近更新された株式ID
-  const [recentlyUpdated, setRecentlyUpdated] = useState<string | null>(null);
-  
+
   // データ転送モーダルの状態
   const [isDataTransferModalOpen, setIsDataTransferModalOpen] = useState(false);
 
   // ローカルストレージからデータを読み込む
   useEffect(() => {
-    // ローカルストレージのキーを固定
-    const STORAGE_KEY = 'portfolioStockList';
-    
-    console.log('ローカルストレージからデータを読み込もうとしています...');
-    const savedData = localStorage.getItem(STORAGE_KEY);
-    
-    if (savedData) {
+    const savedStocks = localStorage.getItem('stockList');
+    if (savedStocks) {
       try {
-        console.log('ローカルストレージからデータを取得しました:', savedData.substring(0, 100) + '...');
-        const parsedData = JSON.parse(savedData);
+        const parsedStocks = JSON.parse(savedStocks);
         
-        // データの検証と修正
-        const validatedData = parsedData.map((stock: any) => {
-          // 数字のみの銘柄コードは日本株として扱う
-          const isNumericCode = /^\d+$/.test(stock.code);
-          
-          // 数字のみの銘柄コード（日本株）が米国の投資国として設定されている場合は修正
-          // ただし、ユーザーが明示的に設定した場合は修正しない
-          if (isNumericCode && stock.country === 'US' && !stock.userSetCountry) {
-            console.log(`銘柄コード ${stock.code} の投資国を米国から日本に修正します（自動修正）`);
-            return {
-              ...stock,
-              country: 'JP', // 投資国を日本に修正
-              currency: 'JPY' // 通貨も日本円に修正
-            };
+        // 既存のデータに country フィールドがない場合は追加
+        const updatedStocks = parsedStocks.map((stock: any) => {
+          if (!stock.country) {
+            // 既存のデータから国を推測
+            if (stock.type === 'fund') {
+              // 投資信託はデフォルトで日本とする
+              return { ...stock, country: 'JP' };
+            } else {
+              // 株式は通貨から判断
+              return { ...stock, country: stock.currency === 'USD' ? 'US' : 'JP' };
+            }
           }
           
-          // 特定の銘柄（2014）の設定を修正する処理を削除
-          // ユーザーが選択した投資国を尊重する
+          // 米国株の場合は国の区分を強制的に'US'に設定
+          if (stock.currency === 'USD' && stock.country !== 'US') {
+            console.log(`${stock.code}の国の区分を'US'に修正します`);
+            return { ...stock, country: 'US' };
+          }
           
           return stock;
         });
         
-        setStockList(validatedData);
-        console.log('ローカルストレージからデータを読み込みました:', validatedData.length + '件');
-        
-        // データの修正後に評価額を更新
-        setTimeout(() => {
-          updateStockValues();
-        }, 1000); // 1秒後に実行
+        setStockList(updatedStocks);
+        console.log('ローカルストレージからデータを読み込みました:', updatedStocks.length + '件');
       } catch (e) {
         console.error('保存データの読み込みエラー:', e);
-        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem('stockList');
       }
-    } else {
-      console.log('ローカルストレージにデータが存在しません。初期状態で開始します。');
     }
     
     // 為替レートの保存データを読み込む
@@ -132,78 +124,29 @@ export default function Home() {
       }
     }
     
-    // 自動更新の状態を読み込む
-    const savedAutoRefresh = localStorage.getItem('autoRefresh');
-    if (savedAutoRefresh) {
-      try {
-        const autoRefreshState = savedAutoRefresh === 'true';
-        console.log('自動更新の状態をローカルストレージから読み込みました:', autoRefreshState);
-        setAutoRefresh(autoRefreshState);
-      } catch (e) {
-        console.error('自動更新状態の読み込みエラー:', e);
-      }
-    }
-    
-    // 更新間隔を読み込む
-    const savedRefreshInterval = localStorage.getItem('refreshInterval');
-    if (savedRefreshInterval) {
-      try {
-        setRefreshInterval(Number(savedRefreshInterval));
-      } catch (e) {
-        console.error('更新間隔の読み込みエラー:', e);
-      }
-    }
-    
     // 為替レートを取得
     fetchExchangeRate();
   }, []);
-  
-  // 自動更新の設定
-  useEffect(() => {
-    if (autoRefresh) {
-      const intervalId = setInterval(() => {
-        refreshStockValues();
-      }, refreshInterval);
-      
-      return () => clearInterval(intervalId);
-    }
-  }, [autoRefresh, refreshInterval]);
 
-  // 株式リストが変更されたときに合計評価額を更新
+  // 株式リストが変更されたら評価額を更新
   useEffect(() => {
-    // 合計評価額を計算
     calculateTotalValue();
     
-    // ローカルストレージのキーを固定
-    const STORAGE_KEY = 'portfolioStockList';
-    
-    // 株式リストが空でない場合はローカルストレージに保存
+    // ローカルストレージに保存（株式リストが空でない場合のみ）
     if (stockList.length > 0) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(stockList));
-        console.log('ローカルストレージにデータを保存しました:', stockList.length + '件');
-      } catch (e) {
-        console.error('データ保存エラー:', e);
-      }
+      localStorage.setItem('stockList', JSON.stringify(stockList));
+      console.log('データをローカルストレージに保存しました:', stockList.length + '件');
     }
     
-    // 価格情報がない株式がある場合は自動的に更新
-    const hasStocksWithoutPrice = stockList.some(stock => !stock.price || stock.price === 0);
-    if (stockList.length > 0 && hasStocksWithoutPrice) {
+    // 株式リストが更新されたら自動的に株価を取得（初回のみ）
+    if (stockList.length > 0 && !stockList.some(stock => stock.price)) {
       updateStockValues();
     }
   }, [stockList]);
-  
-  // 為替レートが変更されたときにローカルストレージに保存
+
+  // 為替レートが変更されたら保存
   useEffect(() => {
-    if (exchangeRate) {
-      try {
-        localStorage.setItem('exchangeRate', exchangeRate.toString());
-        console.log('為替レートをローカルストレージに保存しました:', exchangeRate);
-      } catch (e) {
-        console.error('為替レート保存エラー:', e);
-      }
-    }
+    localStorage.setItem('exchangeRate', exchangeRate.toString());
   }, [exchangeRate]);
 
   // 自動更新の設定
@@ -301,20 +244,16 @@ export default function Home() {
 
     console.log('合計評価額計算開始:');
     stockList.forEach(stock => {
-      // 数字のみの銘柄コードは日本株として扱う（通貨計算のみ）
-      const isNumericCode = /^\d+$/.test(stock.code);
-      const shouldCalculateAsJP = isNumericCode;
-      
-      console.log(`${stock.code}: 市場=${stock.isUSStock ? '米国株' : (stock.isFund ? '投資信託' : '日本株')}, 国=${stock.country}, 通貨=${stock.currency}, 評価額=${stock.value || 0}円, 数字のみ=${isNumericCode}`);
+      console.log(`${stock.code}: 種別=${stock.type}, 国=${stock.country}, 通貨=${stock.currency}, 評価額=${stock.value || 0}円`);
       
       if (stock.value) {
-        // 投資国に基づいて分類
+        // 投資国だけに基づいて分類
         if (stock.country === 'US') {
           totalUs += stock.value;
           console.log(`  → 米国投資に加算: ${stock.value}円`);
         } else {
           totalJp += stock.value;
-          console.log(`  → 日本投資に加算: ${stock.value}円${shouldCalculateAsJP ? ' (数字のみの銘柄コード)' : ''}`);
+          console.log(`  → 日本投資に加算: ${stock.value}円`);
         }
       }
     });
@@ -332,41 +271,14 @@ export default function Home() {
 
   // 株価を取得して評価額を計算
   const updateStockValues = async () => {
-    console.log('===== 株価情報の更新開始 =====');
-    console.log('更新前のstockList状態:', stockList.length + '件');
-    
     setLoading(true);
     
     try {
       console.log('株価情報の更新を開始します...');
       
-      // ローカルストレージから最新のデータを取得
-      const STORAGE_KEY = 'portfolioStockList';
-      const savedData = localStorage.getItem(STORAGE_KEY);
-      
       // 現在のstockListを取得（最新の状態を確保）
-      let currentStockList = [...stockList];
-      
-      // ローカルストレージにデータがある場合は、そちらを優先
-      if (savedData) {
-        try {
-          const parsedData = JSON.parse(savedData);
-          console.log('ローカルストレージから最新データを取得:', parsedData.length + '件');
-          
-          // ローカルストレージのデータが現在のstockListと異なる場合は、ローカルストレージのデータを使用
-          if (parsedData.length !== currentStockList.length) {
-            console.log('ローカルストレージのデータが現在のstockListと異なります。ローカルストレージのデータを使用します。');
-            console.log('ローカルストレージ:', parsedData.length + '件', 'メモリ上:', currentStockList.length + '件');
-            currentStockList = parsedData;
-          }
-        } catch (e) {
-          console.error('ローカルストレージからのデータ読み込みエラー:', e);
-        }
-      } else {
-        console.log('ローカルストレージにデータが存在しません。メモリ上のデータを使用します。');
-      }
-      
-      console.log('更新に使用するデータ:', currentStockList.length + '件');
+      const currentStockList = [...stockList];
+      console.log('更新前の株式リスト:', currentStockList.length + '件');
       
       // 更新用のリストを作成（ディープコピー）
       const updatedList = JSON.parse(JSON.stringify(currentStockList));
@@ -377,7 +289,7 @@ export default function Home() {
       // 各株式の情報を取得
       for (let i = 0; i < updatedList.length; i++) {
         const stock = updatedList[i];
-        const originalType = stock.type; // 元の市場を保持
+        const originalType = stock.type; // 元の種別を保持
         
         try {
           console.log(`${stock.code}の情報を取得中...`);
@@ -407,17 +319,13 @@ export default function Home() {
                 name: data.fund.name || stock.name,
                 currency: 'JPY',
                 lastUpdated: new Date().toLocaleString(),
-                type: originalType, // 元の市場を明示的に保持
+                type: originalType, // 元の種別を明示的に保持
                 country: stock.country // 国の区分を保持
               };
             }
           } else {
             // 株式の場合
-            const isUS = stock.isUSStock; // 市場が米国株かどうか
-            // 数字のみの銘柄コードは日本株として扱う（通貨計算のみ）
-            const isNumericCode = /^\d+$/.test(stock.code);
-            const shouldCalculateAsJP = isNumericCode;
-            
+            const isUS = stock.country === 'US';
             const response = await fetch(`/api/stock?code=${stock.code}&isUSStock=${isUS}`);
             const data = await response.json();
             
@@ -436,38 +344,28 @@ export default function Home() {
                 price = data.google.price;
               }
               
-              // 2014の銘柄コードの場合、詳細なデバッグ情報を出力
-              if (stock.code === '2014') {
-                console.log('===== 2014の評価額計算詳細 =====');
-                console.log('取得した株価データ:', data);
-                console.log('数値化された株価:', numericPrice);
-                console.log('所有数:', stock.shares);
-              }
-              
-              // 市場が米国株の場合のみ為替レート計算を行う（数字のみの銘柄コードは除外）
-              if (isUS && !shouldCalculateAsJP) {
+              // 米国株の場合
+              if (isUS) {
                 // 米国株の場合は円換算（四捨五入）
                 value = Math.round(numericPrice * stock.shares * exchangeRate);
                 priceInJPY = numericPrice > 0 ? `${numericPrice.toLocaleString()} ドル (${(numericPrice * exchangeRate).toLocaleString()} 円)` : '未取得';
               } else {
-                // 日本株または数字のみの銘柄コードの場合はそのまま（四捨五入）
+                // 日本株の場合はそのまま（四捨五入）
                 value = Math.round(numericPrice * stock.shares);
                 priceInJPY = '';
               }
               
-              console.log(`${stock.code}の通貨: ${shouldCalculateAsJP ? 'JPY (数字のみの銘柄コード)' : data.currency}, 国の区分: ${stock.country}, 市場: ${isUS ? '米国株' : '日本株'}, 評価額: ${value}円`);
+              console.log(`${stock.code}の通貨: ${data.currency}, 国の区分: ${stock.country}, 評価額: ${value}円`);
               
-              // 通貨は数字のみの銘柄コードの場合はJPYに設定するが、投資国（country）は変更しない
               updatedList[i] = {
                 ...stock,
                 price: price,
                 priceInJPY: priceInJPY,
                 value: value,
-                currency: shouldCalculateAsJP ? 'JPY' : data.currency,
+                currency: data.currency,
                 lastUpdated: new Date().toLocaleString(),
-                type: originalType, // 元の市場を明示的に保持
-                country: stock.country, // 投資国の設定は変更しない
-                isUSStock: stock.isUSStock // 市場（米国株かどうか）を保持
+                type: originalType, // 元の種別を明示的に保持
+                country: stock.country // 通貨に基づいて国の区分を設定
               };
             }
           }
@@ -498,14 +396,14 @@ export default function Home() {
         
         // 更新後のリストにインポートしたデータが含まれているか確認
         const missingCodes = importedCodes.filter(code => 
-          !updatedList.some((stock: StockItem) => stock.code === code)
+          !updatedList.some(stock => stock.code === code)
         );
         
         if (missingCodes.length > 0) {
           console.warn('株価更新後に失われたデータがあります:', missingCodes);
           
           // 失われたデータを復元
-          const missingStocks = lastImportedStocksRef.current.filter((stock: StockItem) => 
+          const missingStocks = lastImportedStocksRef.current.filter(stock => 
             missingCodes.includes(stock.code)
           );
           
@@ -522,62 +420,8 @@ export default function Home() {
       setStockList(updatedList);
       
       // 更新したデータを直接ローカルストレージに保存
-      try {
-        const STORAGE_KEY = 'portfolioStockList';
-        
-        // 保存前に現在のローカルストレージのデータを確認
-        const currentSavedData = localStorage.getItem(STORAGE_KEY);
-        if (currentSavedData) {
-          try {
-            const parsedCurrentData = JSON.parse(currentSavedData);
-            console.log('保存前のローカルストレージデータ:', parsedCurrentData.length + '件');
-            
-            // 更新後のデータが現在のデータより少ない場合は警告
-            if (updatedList.length < parsedCurrentData.length) {
-              console.warn('警告: 更新後のデータが現在のデータより少なくなっています！');
-              console.warn('現在のデータ:', parsedCurrentData.length + '件', '更新後のデータ:', updatedList.length + '件');
-              
-              // 現在のデータのコードリスト
-              const currentCodes = parsedCurrentData.map((stock: StockItem) => stock.code);
-              // 更新後のデータのコードリスト
-              const updatedCodes = updatedList.map((stock: StockItem) => stock.code);
-              
-              // 失われたコードを特定
-              const lostCodes = currentCodes.filter((code: string) => !updatedCodes.includes(code));
-              console.warn('失われた銘柄コード:', lostCodes);
-              
-              // 失われたデータを復元
-              if (lostCodes.length > 0) {
-                console.log('失われたデータを復元します...');
-                const lostStocks = parsedCurrentData.filter((stock: StockItem) => 
-                  lostCodes.includes(stock.code)
-                );
-                
-                // 復元したデータを追加
-                updatedList.push(...lostStocks);
-                console.log('データ復元後:', updatedList.length + '件');
-              }
-            }
-          } catch (e) {
-            console.error('ローカルストレージデータの検証エラー:', e);
-          }
-        }
-        
-        // 更新したデータを保存
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
-        console.log('更新データをローカルストレージに直接保存しました:', updatedList.length + '件');
-        
-        // 保存後に確認
-        const savedData = localStorage.getItem(STORAGE_KEY);
-        if (savedData) {
-          const parsedData = JSON.parse(savedData);
-          console.log('保存後のデータを確認:', parsedData.length + '件');
-        } else {
-          console.error('保存後にデータが見つかりません！');
-        }
-      } catch (e) {
-        console.error('データ保存エラー:', e);
-      }
+      localStorage.setItem('stockList', JSON.stringify(updatedList));
+      console.log('更新データをローカルストレージに直接保存しました:', updatedList.length + '件');
       
       // 合計評価額を直接計算して更新
       let totalJp = 0;
@@ -604,9 +448,6 @@ export default function Home() {
       console.log(`日本投資合計: ${totalJp}円`);
       console.log(`米国投資合計: ${totalUs}円`);
       console.log(`総合計: ${total}円`);
-      
-      console.log('===== 株価情報の更新完了 =====');
-      console.log('更新後のstockList状態:', updatedList.length + '件');
     } finally {
       setLoading(false);
     }
@@ -615,8 +456,6 @@ export default function Home() {
   // 株式を追加
   const addStock = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    console.log('===== 株式追加処理開始 =====');
     
     if (!stockCode || !shares) {
       setError('銘柄コードと所有数を入力してください');
@@ -629,112 +468,35 @@ export default function Home() {
       return;
     }
     
-    // 市場と投資国を正しく設定
-    // isUSStockは市場（日本株/米国株）を表し、countryは投資国（JP/US）を表す
-    const isUS = isUSStock; // 市場が米国株かどうか
+    const isUS = isUSStock || (country === 'US');
     
-    // 数字のみの銘柄コードは日本株として扱う（通貨計算のみ）
-    const isNumericCode = /^\d+$/.test(stockCode);
-    const shouldCalculateAsJP = isNumericCode;
-    
-    console.log('株式追加情報:', {
-      code: stockCode,
-      shares: shares,
-      isUS: isUS,
-      isNumericCode: isNumericCode,
-      shouldCalculateAsJP: shouldCalculateAsJP,
-      country: country
-    });
-    
-    // 新しい株式オブジェクトを作成
-    const newStock: StockItem = {
-      id: uuidv4(),
-      code: stockCode,
-      shares: parseInt(shares, 10),
-      price: 0,
-      value: 0,
-      // 市場が日本株または数字のみの銘柄コードの場合は通貨をJPYに設定
-      // 市場が米国株の場合のみ通貨をUSDに設定
-      currency: shouldCalculateAsJP ? 'JPY' : (isUS ? 'USD' : 'JPY'),
-      type: isFund ? 'fund' : 'stock', // 市場を追加
-      name: isFund ? '投資信託' : '',
-      country: country, // ユーザーが選択した投資国をそのまま使用
-      isFund: isFund,
-      isUSStock: isUS,
-      userSetCountry: true, // ユーザーが明示的に投資国を設定したことを記録
-    };
-    
-    console.log('作成した新しい株式オブジェクト:', newStock);
-    
-    // 新しい株式リストを作成
-    const updatedStockList = [...stockList, newStock];
-    
-    console.log('更新前の株式リスト:', stockList.length + '件');
-    console.log('更新後の株式リスト:', updatedStockList.length + '件');
-    
-    // 状態を更新
-    setStockList(updatedStockList);
-    
-    // ローカルストレージに明示的に保存
-    try {
-      const STORAGE_KEY = 'portfolioStockList';
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedStockList));
-      console.log('データをローカルストレージに保存しました:', updatedStockList.length + '件');
-      
-      // 保存後に確認
-      const savedData = localStorage.getItem(STORAGE_KEY);
-      if (savedData) {
-        const parsedData = JSON.parse(savedData);
-        console.log('保存後のデータを確認:', parsedData.length + '件');
-      } else {
-        console.error('保存後にデータが見つかりません！');
+    // 新しい株式を追加
+    setStockList([
+      ...stockList,
+      {
+        id: uuidv4(),
+        code: stockCode,
+        shares: parseInt(shares, 10),
+        price: 0,
+        value: 0,
+        currency: isUS ? 'USD' : 'JPY',
+        type: isFund ? 'fund' : 'stock', // 種別を追加
+        name: isFund ? '投資信託' : '',
+        country: country, // ユーザーが選択した投資国をそのまま使用
+        isFund: isFund,
+        isUSStock: isUS
       }
-    } catch (e) {
-      console.error('データ保存エラー:', e);
-    }
+    ]);
     
     // フォームをリセット
     setStockCode('');
     setShares('');
     setError('');
-    
-    // 株価情報を更新（自動更新を有効にしない）
-    console.log('株式追加後に価格情報を更新します');
-    
-    // 自動更新の状態を保存
-    const currentAutoRefresh = autoRefresh;
-    
-    // 一時的に自動更新を無効化
-    if (currentAutoRefresh) {
-      setAutoRefresh(false);
-    }
-    
-    // 価格情報を更新
-    setTimeout(() => {
-      updateStockValues();
-      
-      // 元の自動更新状態を復元
-      if (currentAutoRefresh) {
-        setTimeout(() => {
-          setAutoRefresh(currentAutoRefresh);
-        }, 1000);
-      }
-    }, 500);
   };
 
   // 株式を削除
   const removeStock = (id: string) => {
-    const updatedStockList = stockList.filter(item => item.id !== id);
-    setStockList(updatedStockList);
-    
-    // ローカルストレージに明示的に保存
-    try {
-      const STORAGE_KEY = 'portfolioStockList';
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedStockList));
-      console.log('データをローカルストレージに保存しました:', updatedStockList.length + '件');
-    } catch (e) {
-      console.error('データ保存エラー:', e);
-    }
+    setStockList(stockList.filter(item => item.id !== id));
   };
 
   // 所有数を更新
@@ -761,8 +523,8 @@ export default function Home() {
         // 評価額を再計算
         if (typeof stock.price === 'number') {
           // 価格が数値の場合
-          if (stock.isUSStock) {
-            // 市場が米国株の場合のみ為替レート計算を行う
+          if (stock.currency === 'USD') {
+            // 米国株の場合は円換算（四捨五入）
             updatedStock.value = Math.round(stock.price * newShares * exchangeRate);
           } else {
             // 日本株の場合はそのまま（四捨五入）
@@ -791,15 +553,6 @@ export default function Home() {
     });
     
     setStockList(updatedList);
-    
-    // ローカルストレージに明示的に保存
-    try {
-      const STORAGE_KEY = 'portfolioStockList';
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
-      console.log('データをローカルストレージに保存しました:', updatedList.length + '件');
-    } catch (e) {
-      console.error('データ保存エラー:', e);
-    }
     
     // 編集中の所有数をクリア
     const newEditingShares = { ...editingShares };
@@ -900,24 +653,7 @@ export default function Home() {
   // 株価を更新
   const refreshStockValues = () => {
     console.log('株価と為替レートの手動更新を開始');
-    
-    // 自動更新の状態を保存
-    const currentAutoRefresh = autoRefresh;
-    
-    // 一時的に自動更新を無効化（更新中に自動更新が有効になるのを防ぐ）
-    if (currentAutoRefresh) {
-      setAutoRefresh(false);
-    }
-    
-    // 株価情報を更新
     updateStockValues();
-    
-    // 元の自動更新状態を復元
-    if (currentAutoRefresh) {
-      setTimeout(() => {
-        setAutoRefresh(currentAutoRefresh);
-      }, 1000);
-    }
   };
 
   // 自動更新の切り替え
@@ -925,28 +661,13 @@ export default function Home() {
     const newState = !autoRefresh;
     console.log('自動更新を切り替え: 現在の状態=', autoRefresh, ' → 新しい状態=', newState);
     setAutoRefresh(newState);
-    
-    // 自動更新の状態をローカルストレージに保存
-    try {
-      localStorage.setItem('autoRefresh', newState.toString());
-      console.log('自動更新の状態をローカルストレージに保存しました:', newState);
-    } catch (e) {
-      console.error('自動更新状態の保存エラー:', e);
-    }
   };
 
   // 更新間隔の変更
   const changeRefreshInterval = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const interval = Number(e.target.value);
     setRefreshInterval(interval);
-    
-    // 更新間隔をローカルストレージに保存
-    try {
-      localStorage.setItem('refreshInterval', interval.toString());
-      console.log('更新間隔をローカルストレージに保存しました:', interval);
-    } catch (e) {
-      console.error('更新間隔の保存エラー:', e);
-    }
+    localStorage.setItem('refreshInterval', interval.toString());
   };
 
   // 目標比率が変更されたら保存
@@ -1065,8 +786,7 @@ export default function Home() {
           setStockList(updatedStockList);
           
           // ローカルストレージに直接保存（useEffectを待たない）
-          const STORAGE_KEY = 'portfolioStockList';
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedStockList));
+          localStorage.setItem('stockList', JSON.stringify(updatedStockList));
           console.log('インポートデータをローカルストレージに直接保存しました:', updatedStockList.length + '件');
           
           // インポートされたデータをrefに保存（株価更新後の復元用）
@@ -1078,13 +798,13 @@ export default function Home() {
           // 価格情報を更新（少し遅延を入れる）
           setTimeout(() => {
             // 更新前に再度ローカルストレージから読み込む（念のため）
-            const savedData = localStorage.getItem(STORAGE_KEY);
+            const savedData = localStorage.getItem('stockList');
             if (savedData) {
               try {
                 const parsedData = JSON.parse(savedData);
                 if (parsedData.length !== updatedStockList.length) {
                   console.warn('ローカルストレージのデータが期待と異なります。再設定します。');
-                  localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedStockList));
+                  localStorage.setItem('stockList', JSON.stringify(updatedStockList));
                 }
               } catch (e) {
                 console.error('ローカルストレージ検証エラー:', e);
@@ -1104,17 +824,6 @@ export default function Home() {
     } else {
       alert('有効なデータがありませんでした。');
     }
-  };
-
-  // フッターコンポーネント
-  const Footer = () => {
-    return (
-      <footer className="mt-8 p-4 text-center text-gray-500 text-xs">
-        <p>ポートフォリオ管理ツール v{APP_VERSION.major}.{APP_VERSION.minor}.{APP_VERSION.patch} ({APP_VERSION.date})</p>
-        <p>{APP_VERSION.notes}</p>
-        <p>© 2024 All rights reserved.</p>
-      </footer>
-    );
   };
 
   return (
@@ -1452,7 +1161,7 @@ export default function Home() {
             
             <div className="grid grid-cols-1 gap-4">
               <div className="flex items-center justify-between mb-2 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">市場選択:</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">種別選択:</span>
                 <div className="flex items-center space-x-4">
                   <label className="inline-flex items-center">
                     <input
@@ -1462,7 +1171,7 @@ export default function Home() {
                       onChange={() => {
                         setIsFund(false);
                         setIsUSStock(false);
-                        // 市場のみ変更し、投資国は変更しない
+                        setCountry('JP');
                       }}
                     />
                     <span className="ml-2 text-gray-700 dark:text-gray-300">日本株</span>
@@ -1475,7 +1184,7 @@ export default function Home() {
                       onChange={() => {
                         setIsFund(false);
                         setIsUSStock(true);
-                        // 市場のみ変更し、投資国は変更しない
+                        setCountry('US');
                       }}
                     />
                     <span className="ml-2 text-gray-700 dark:text-gray-300">米国株</span>
@@ -1488,7 +1197,6 @@ export default function Home() {
                       onChange={() => {
                         setIsFund(true);
                         setIsUSStock(false);
-                        // 市場のみ変更し、投資国は変更しない
                       }}
                     />
                     <span className="ml-2 text-gray-700 dark:text-gray-300">投資信託</span>
@@ -1733,20 +1441,6 @@ export default function Home() {
                       <th 
                         scope="col" 
                         className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[10%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
-                        onClick={() => requestSort('type')}
-                      >
-                        <div className="flex items-center">
-                          市場
-                          {sortConfig?.key === 'type' && (
-                            <span className="ml-1">
-                              {sortConfig?.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </th>
-                      <th 
-                        scope="col" 
-                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-[10%] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                         onClick={() => requestSort('country')}
                       >
                         <div className="flex items-center">
@@ -1765,7 +1459,19 @@ export default function Home() {
                     {sortedStockList.map((stock, index) => (
                       <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
                         <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                          {stock.code}
+                          {stock.isFund ? (
+                            <span className="flex items-center">
+                              {stock.code}
+                              <span className="ml-1 px-1 py-0.5 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">投信</span>
+                            </span>
+                          ) : stock.isUSStock ? (
+                            <span className="flex items-center">
+                              {stock.code}
+                              <span className="ml-1 px-1 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">米国</span>
+                            </span>
+                          ) : (
+                            stock.code
+                          )}
                         </td>
                         <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 truncate">{stock.name || '-'}</td>
                         <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right">
@@ -1807,15 +1513,6 @@ export default function Home() {
                             <div className="text-xs text-gray-500 dark:text-gray-400">
                               (${(typeof stock.price === 'number' ? stock.price * stock.shares : 0).toLocaleString()})
                             </div>
-                          )}
-                        </td>
-                        <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                          {stock.isFund ? (
-                            <span className="px-2 py-1 text-xs rounded-md bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">投資信託</span>
-                          ) : stock.isUSStock ? (
-                            <span className="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">米国株</span>
-                          ) : (
-                            <span className="px-2 py-1 text-xs rounded-md bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">日本株</span>
                           )}
                         </td>
                         <td className="px-3 py-3 whitespace-nowrap text-sm">
@@ -1961,7 +1658,14 @@ export default function Home() {
         )}
       </main>
 
-      <Footer />
+      <footer className="mt-auto pt-8 pb-4 text-center text-sm text-gray-500">
+        <p>© {new Date().getFullYear()} アセットバランサー - Next.jsで作成</p>
+        <p className="mt-1">
+          <span className="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-xs font-mono">
+            {APP_VERSION}
+          </span>
+        </p>
+      </footer>
       
       {/* データ転送モーダル */}
       <DataTransferModal
