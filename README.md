@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Portfilio - 資産バランス管理アプリ
 
-## Getting Started
+Portfilioは、投資資産のバランスを簡単に管理・可視化するためのウェブアプリケーションです。日本株、米国株、投資信託などの資産を一元管理し、最適な資産配分を実現するためのツールです。
 
-First, run the development server:
+## 主な機能
+
+- **資産の一元管理**: 日本株、米国株、投資信託などの資産を一箇所で管理
+- **リアルタイム株価取得**: Google FinanceとYahoo! Financeから最新の株価データを自動取得
+- **資産配分の可視化**: 円グラフによる資産配分の視覚化（小数点第一位まで表示）
+- **QRコードによるデータ転送**: 複数デバイス間でのデータ共有が簡単に
+- **自動株価更新**: 定期的な株価の自動更新機能
+
+## 使い方
+
+開発サーバーを起動するには:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+ブラウザで [http://localhost:3000](http://localhost:3000) を開いてアプリケーションを利用できます。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 技術スタック
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- [Next.js](https://nextjs.org) - Reactフレームワーク
+- [React](https://reactjs.org) - UIライブラリ
+- [Chart.js](https://www.chartjs.org) - データ可視化
+- [QRCode.react](https://www.npmjs.com/package/qrcode.react) - QRコード生成
+- [ZXing](https://github.com/zxing-js/library) - QRコード読み取り
 
-## Learn More
+## バージョン履歴
 
-To learn more about Next.js, take a look at the following resources:
+現在のバージョン: v1.0.17
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+主な更新内容:
+- v1.0.17 - 表示の改善：資産割合の％表示を小数点第一位まで表示するように変更
+- v1.0.16 - 開発環境の改善：Turbopackフラグを削除し、ビルドの安定性を向上
+- v1.0.15 - デバッグ機能を強化：Googleファイナンスからの株価取得プロセスの詳細ログを追加
+- v1.0.14 - 特別処理を削除：銘柄コード2014の固定価格設定を削除し、実際のGoogle Finance価格を使用
+- v1.0.13 - 株価取得方法を改善：Google Financeからの株価取得を優先化し、小数点第一位まで表示
+- v1.0.12 - 為替レート計算ロジックを改善：市場が米国株の場合のみ為替レート計算を適用
+- v1.0.11 - 投資国設定の保持機能を追加：ユーザーが選択した投資国を尊重
+- v1.0.10 - ローカルストレージの永続性を強化：データ保存と復元機能を改善
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+詳細な更新履歴は[version.ts](app/version.ts)ファイルを参照してください。
 
-## Deploy on Vercel
+## ライセンス
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+このプロジェクトはMITライセンスの下で公開されています。 
