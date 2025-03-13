@@ -945,24 +945,13 @@ export default function Home() {
                                   <p className="text-green-600 dark:text-green-400">現在のポートフォリオは目標比率に近いため、リバランス不要です。</p>
                                 ) : (
                                   <div>
-                                    {displayJpDifference > 10000 && (
+                                    {totalJpValue < totalUsValue ? (
                                       <p className="mb-2 text-gray-900 dark:text-white">
-                                        <span className="font-semibold text-blue-600 dark:text-blue-400">日本投資を{Math.round(displayJpDifference).toLocaleString()}円分追加</span>してください。
+                                        <span className="font-semibold text-blue-600 dark:text-blue-400">日本投資を{Math.abs(Math.round(totalUsValue - totalJpValue)).toLocaleString()}円分追加</span>してください。
                                       </p>
-                                    )}
-                                    {displayJpDifference < -10000 && (
+                                    ) : (
                                       <p className="mb-2 text-gray-900 dark:text-white">
-                                        <span className="font-semibold text-gray-600 dark:text-gray-300">日本投資が{Math.abs(Math.round(displayJpDifference)).toLocaleString()}円分過剰</span>です。
-                                      </p>
-                                    )}
-                                    {displayUsDifference > 10000 && (
-                                      <p className="mb-2 text-gray-900 dark:text-white">
-                                        <span className="font-semibold text-blue-600 dark:text-blue-400">米国投資を{Math.round(displayUsDifference).toLocaleString()}円分追加</span>してください。
-                                      </p>
-                                    )}
-                                    {displayUsDifference < -10000 && (
-                                      <p className="mb-2 text-gray-900 dark:text-white">
-                                        <span className="font-semibold text-gray-600 dark:text-gray-300">米国投資が{Math.abs(Math.round(displayUsDifference)).toLocaleString()}円分過剰</span>です。
+                                        <span className="font-semibold text-blue-600 dark:text-blue-400">米国投資を{Math.abs(Math.round(totalJpValue - totalUsValue)).toLocaleString()}円分追加</span>してください。
                                       </p>
                                     )}
                                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
