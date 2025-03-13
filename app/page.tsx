@@ -894,7 +894,7 @@ export default function Home() {
                     {/* リバランス計算結果 */}
                     {totalValue > 0 && (
                       <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
-                        <h5 className="font-semibold mb-2">リバランス分析</h5>
+                        <h5 className="font-semibold mb-2 text-gray-900 dark:text-white">リバランス分析</h5>
                         
                         {(() => {
                           // 現在の比率
@@ -922,20 +922,20 @@ export default function Home() {
                             <div>
                               <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
-                                  <div className="text-sm">日本投資（現在）</div>
-                                  <div className="font-semibold">{totalJpValue.toLocaleString()}円 ({Math.round(currentJpRatio)}%)</div>
+                                  <div className="text-sm text-gray-900 dark:text-gray-200">日本投資（現在）</div>
+                                  <div className="font-semibold text-gray-900 dark:text-white">{totalJpValue.toLocaleString()}円 ({Math.round(currentJpRatio)}%)</div>
                                 </div>
                                 <div>
-                                  <div className="text-sm">米国投資（現在）</div>
-                                  <div className="font-semibold">{totalUsValue.toLocaleString()}円 ({Math.round(currentUsRatio)}%)</div>
+                                  <div className="text-sm text-gray-900 dark:text-gray-200">米国投資（現在）</div>
+                                  <div className="font-semibold text-gray-900 dark:text-white">{totalUsValue.toLocaleString()}円 ({Math.round(currentUsRatio)}%)</div>
                                 </div>
                                 <div>
-                                  <div className="text-sm">日本投資（目標）</div>
-                                  <div className="font-semibold">{Math.round(targetJpAmount).toLocaleString()}円 ({targetRatio}%)</div>
+                                  <div className="text-sm text-gray-900 dark:text-gray-200">日本投資（目標）</div>
+                                  <div className="font-semibold text-gray-900 dark:text-white">{Math.round(targetJpAmount).toLocaleString()}円 ({targetRatio}%)</div>
                                 </div>
                                 <div>
-                                  <div className="text-sm">米国投資（目標）</div>
-                                  <div className="font-semibold">{Math.round(targetUsAmount).toLocaleString()}円 ({100 - targetRatio}%)</div>
+                                  <div className="text-sm text-gray-900 dark:text-gray-200">米国投資（目標）</div>
+                                  <div className="font-semibold text-gray-900 dark:text-white">{Math.round(targetUsAmount).toLocaleString()}円 ({100 - targetRatio}%)</div>
                                 </div>
                               </div>
                               
