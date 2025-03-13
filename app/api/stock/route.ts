@@ -26,11 +26,31 @@ export async function GET(request: Request) {
     // それ以外の場合はクライアントから送信されたisUSStockパラメータを使用
     const isUS = isNumericCode ? false : (isUSStock || /^[A-Z]+$/.test(stockCode));
     
-    // Yahoo!ファイナンスからデータを取得
-    const yahooData = await fetchYahooFinanceData(stockCode, isUS, isNumericCode);
+    let yahooData;
+    let googleData;
     
-    // Googleファイナンスからデータを取得
-    const googleData = await fetchGoogleFinanceData(stockCode, isUS, isNumericCode);
+    // 米国株の場合はGoogleファイナンスを先に取得（Yahoo!ファイナンスでエラーが発生するため）
+    if (isUS) {
+      // Googleファイナンスからデータを取得
+      googleData = await fetchGoogleFinanceData(stockCode, isUS, isNumericCode);
+      
+      // Yahoo!ファイナンスからデータを取得（エラーが発生する可能性あり）
+      try {
+        yahooData = await fetchYahooFinanceData(stockCode, isUS, isNumericCode);
+      } catch (error) {
+        console.error(`Yahoo!ファイナンスデータ取得エラー (${stockCode}):`, error);
+        yahooData = {
+          price: '未取得',
+          change: '未取得',
+          numericPrice: 0,
+          url: `https://finance.yahoo.com/quote/${stockCode}`
+        };
+      }
+    } else {
+      // 日本株の場合は通常通りYahoo!ファイナンスを先に取得
+      yahooData = await fetchYahooFinanceData(stockCode, isUS, isNumericCode);
+      googleData = await fetchGoogleFinanceData(stockCode, isUS, isNumericCode);
+    }
     
     // 通貨を決定（数字のみの場合は常にJPY）
     const currency = isNumericCode ? 'JPY' : (isUS ? 'USD' : 'JPY');
@@ -59,27 +79,234 @@ async function fetchYahooFinanceData(stockCode: string, isUSStock: boolean, isNu
     if (isNumericCode || !isUSStock) {
       // 日本株の場合はスクレイピング
       url = `https://finance.yahoo.co.jp/quote/${stockCode}`;
-      const response = await axios.get(url, {
-        headers: {
-          'User-Agent': USER_AGENT
-        },
-        timeout: 10000 // 10秒タイムアウト
-      });
+      console.log(`Yahoo!ファイナンス日本版にアクセス: ${url}`);
       
-      const $ = cheerio.load(response.data);
-      
-      // 現在値を取得
-      const priceText = $('._3rXWJKZF').first().text().trim();
-      if (priceText) {
-        // カンマを除去して数値に変換
-        numericPrice = parseFloat(priceText.replace(/,/g, ''));
-        price = `${numericPrice.toLocaleString()}円`;
-      }
-      
-      // 前日比を取得
-      const changeText = $('._3rXWJKZF').eq(1).text().trim();
-      if (changeText) {
-        change = changeText;
+      try {
+        const response = await axios.get(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml',
+            'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
+          timeout: 15000 // 15秒タイムアウト
+        });
+        
+        console.log(`Yahoo!ファイナンス日本版からレスポンス取得: ${stockCode} (ステータス: ${response.status})`);
+        
+        // レスポンスのHTMLを解析
+        const $ = cheerio.load(response.data);
+        
+        // 現在値を取得（複数の方法を試す）
+        // 方法1: 従来のセレクタ
+        let priceText = $('._3rXWJKZF').first().text().trim();
+        console.log(`方法1で取得した価格: "${priceText}"`);
+        
+        // 方法2: 新しいセレクタを試す
+        if (!priceText) {
+          priceText = $('span._3BGK5SVf').first().text().trim();
+          console.log(`方法2で取得した価格: "${priceText}"`);
+        }
+        
+        // 方法3: 特定のクラス名を持つ要素を探す
+        if (!priceText) {
+          const potentialPriceSelectors = [
+            '.stYMW9im', // 新しいYahoo!ファイナンスで使われる可能性のあるクラス
+            '.fwNOQb59',
+            '.ZMlVJa9i',
+            '.DnzRnuP3',
+            '._3wVTceYe',
+            '.XcVN3-PN',
+            '.xZUdWgKK'
+          ];
+          
+          for (const selector of potentialPriceSelectors) {
+            const elements = $(selector);
+            if (elements.length > 0) {
+              const text = elements.first().text().trim();
+              if (text && text.length > 0) {
+                priceText = text;
+                console.log(`方法3で取得した価格 (${selector}): "${priceText}"`);
+                break;
+              }
+            }
+          }
+        }
+        
+        // 方法4: 「現在値」というテキストを含む要素の近くを探す
+        if (!priceText) {
+          $('*').each((_, element) => {
+            const text = $(element).text().trim();
+            if (text === '現在値' || text.includes('現在値')) {
+              // 親要素、兄弟要素、子要素を調査
+              const parent = $(element).parent();
+              const siblings = $(element).siblings();
+              
+              // 親要素内のテキストをチェック
+              parent.find('*').each((_, child) => {
+                const childText = $(child).text().trim();
+                if (/^[\d,]+$/.test(childText) && childText.length > 2) {
+                  priceText = childText;
+                  console.log(`方法4-1で取得した価格: "${priceText}"`);
+                  return false;
+                }
+              });
+              
+              if (priceText) return false;
+              
+              // 兄弟要素をチェック
+              siblings.each((_, sibling) => {
+                const siblingText = $(sibling).text().trim();
+                if (/^[\d,]+$/.test(siblingText) && siblingText.length > 2) {
+                  priceText = siblingText;
+                  console.log(`方法4-2で取得した価格: "${priceText}"`);
+                  return false;
+                }
+              });
+              
+              return false;
+            }
+          });
+        }
+        
+        // 方法5: テーブル内の数値を探す
+        if (!priceText) {
+          $('table tr').each((_, row) => {
+            const cells = $(row).find('td, th');
+            cells.each((i, cell) => {
+              const cellText = $(cell).text().trim();
+              if (cellText === '現在値' || cellText.includes('現在値')) {
+                // 次のセルを取得
+                const nextCell = cells.eq(i + 1);
+                if (nextCell.length > 0) {
+                  const nextCellText = nextCell.text().trim();
+                  if (nextCellText && nextCellText.length > 0) {
+                    priceText = nextCellText;
+                    console.log(`方法5で取得した価格: "${priceText}"`);
+                    return false;
+                  }
+                }
+              }
+            });
+            if (priceText) return false;
+          });
+        }
+        
+        // 方法6: 最後の手段として、数字とカンマのみの要素を探す
+        if (!priceText) {
+          $('span, div').each((_, element) => {
+            const text = $(element).text().trim();
+            // 数字とカンマのみで構成される文字列を探す
+            if (/^[\d,]+$/.test(text) && text.length > 2) {
+              priceText = text;
+              console.log(`方法6で取得した価格: "${priceText}"`);
+              return false; // eachループを抜ける
+            }
+          });
+        }
+        
+        if (priceText) {
+          // カンマを除去して数値に変換
+          numericPrice = parseFloat(priceText.replace(/,/g, ''));
+          price = `${numericPrice.toLocaleString()}円`;
+          console.log(`日本株価格取得成功: ${stockCode} = ${price}`);
+        } else {
+          console.log(`日本株価格取得失敗: ${stockCode} - セレクタが見つかりません`);
+          
+          // HTMLの一部をログに出力して調査
+          console.log('HTML構造の一部:');
+          const bodyHtml = $('body').html();
+          if (bodyHtml) {
+            console.log(bodyHtml.substring(0, 500) + '...');
+          } else {
+            console.log('HTMLが取得できませんでした');
+          }
+        }
+        
+        // 前日比を取得（複数の方法を試す）
+        // 方法1: 従来のセレクタ
+        let changeText = $('._3rXWJKZF').eq(1).text().trim();
+        
+        // 方法2: 新しいセレクタを試す
+        if (!changeText) {
+          changeText = $('span._3BGK5SVf').eq(1).text().trim();
+        }
+        
+        // 方法3: 「前日比」というラベルの隣の要素を探す
+        if (!changeText) {
+          $('*').each((_, element) => {
+            const text = $(element).text().trim();
+            if (text === '前日比' || text.includes('前日比')) {
+              // 親要素、兄弟要素を調査
+              const parent = $(element).parent();
+              const siblings = $(element).siblings();
+              
+              // 親要素内のテキストをチェック
+              parent.find('*').each((_, child) => {
+                const childText = $(child).text().trim();
+                if (childText && childText !== '前日比' && /[+\-\d]/.test(childText)) {
+                  changeText = childText;
+                  console.log(`方法3-1で取得した前日比: "${changeText}"`);
+                  return false;
+                }
+              });
+              
+              if (changeText) return false;
+              
+              // 兄弟要素をチェック
+              siblings.each((_, sibling) => {
+                const siblingText = $(sibling).text().trim();
+                if (siblingText && siblingText !== '前日比' && /[+\-\d]/.test(siblingText)) {
+                  changeText = siblingText;
+                  console.log(`方法3-2で取得した前日比: "${changeText}"`);
+                  return false;
+                }
+              });
+              
+              return false;
+            }
+          });
+        }
+        
+        if (changeText) {
+          change = changeText;
+          console.log(`日本株前日比取得成功: ${stockCode} = ${change}`);
+        } else {
+          console.log(`日本株前日比取得失敗: ${stockCode}`);
+        }
+      } catch (error) {
+        console.error(`Yahoo!ファイナンス日本版アクセスエラー: ${stockCode}`, error);
+        // エラーが発生した場合はGoogleファイナンスを試す
+        try {
+          console.log(`Googleファイナンスから日本株データ取得を試みます: ${stockCode}`);
+          const googleUrl = `https://www.google.com/finance/quote/${stockCode}:TYO`;
+          const googleResponse = await axios.get(googleUrl, {
+            headers: {
+              'User-Agent': USER_AGENT
+            },
+            timeout: 10000
+          });
+          
+          const $g = cheerio.load(googleResponse.data);
+          
+          // 現在値を取得
+          const googlePriceText = $g('.YMlKec.fxKbKc').text().trim();
+          if (googlePriceText) {
+            numericPrice = parseFloat(googlePriceText.replace(/\$|,|¥/g, ''));
+            price = `${numericPrice.toLocaleString()}円`;
+            console.log(`Googleファイナンスから日本株価格取得成功: ${stockCode} = ${price}`);
+          }
+          
+          // 前日比を取得
+          const googleChangeText = $g('.P6K39c').text().trim();
+          if (googleChangeText) {
+            change = googleChangeText;
+            console.log(`Googleファイナンスから日本株前日比取得成功: ${stockCode} = ${change}`);
+          }
+        } catch (googleError) {
+          console.error(`Googleファイナンスからの日本株データ取得も失敗: ${stockCode}`, googleError);
+        }
       }
     } else {
       // 米国株の場合はスクレイピングに変更（APIが不安定なため）
@@ -88,10 +315,11 @@ async function fetchYahooFinanceData(stockCode: string, isUSStock: boolean, isNu
         url = `https://finance.yahoo.com/quote/${stockCode}`;
         const response = await axios.get(url, {
           headers: {
-            'User-Agent': 'Mozilla/5.0'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
           },
-          timeout: 10000, // 10秒タイムアウト
-          maxContentLength: 10 * 1024 * 1024 // 10MB
+          timeout: 5000, // 5秒タイムアウト
+          maxContentLength: 2 * 1024 * 1024, // 2MB
+          decompress: false // 圧縮を無効化
         });
         
         const $ = cheerio.load(response.data);
@@ -163,35 +391,7 @@ async function fetchYahooFinanceData(stockCode: string, isUSStock: boolean, isNu
         }
       } catch (error) {
         console.error(`Yahoo!ファイナンス(米国株)データ取得エラー: ${stockCode}`, error);
-        
-        // バックアップとしてGoogleファイナンスの値を使用
-        try {
-          // Googleファイナンスから直接取得
-          const googleUrl = `https://www.google.com/finance/quote/${stockCode}:NASDAQ`;
-          const googleResponse = await axios.get(googleUrl, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0'
-            },
-            timeout: 10000
-          });
-          
-          const $ = cheerio.load(googleResponse.data);
-          
-          // 現在値を取得
-          const priceText = $('.YMlKec.fxKbKc').text().trim();
-          if (priceText) {
-            // 重複した価格から最初の価格のみを抽出
-            const priceMatch = priceText.match(/\$[\d.,]+/);
-            const cleanPriceText = priceMatch ? priceMatch[0] : priceText;
-            
-            // $記号とカンマを除去して数値に変換
-            numericPrice = parseFloat(cleanPriceText.replace(/\$|,/g, ''));
-            price = cleanPriceText;
-          }
-        } catch (googleError) {
-          console.error(`Googleファイナンス(バックアップ)データ取得エラー: ${stockCode}`, googleError);
-          // エラーは無視して続行
-        }
+        throw error; // エラーを上位に伝播させる
       }
     }
     
@@ -229,7 +429,8 @@ async function fetchGoogleFinanceData(stockCode: string, isUSStock: boolean, isN
       const response = await axios.get(url, {
         headers: {
           'User-Agent': USER_AGENT
-        }
+        },
+        timeout: 10000
       });
       
       const $ = cheerio.load(response.data);
@@ -249,60 +450,123 @@ async function fetchGoogleFinanceData(stockCode: string, isUSStock: boolean, isN
       }
     } else {
       // 米国株の場合
-      url = `https://www.google.com/finance/quote/${stockCode}:NASDAQ`;
+      // 複数の取引所を試す（NASDAQ, NYSE, NYSEARCA, BATS, OTCMKTS）
+      const exchanges = ['NASDAQ', 'NYSE', 'NYSEARCA', 'BATS', 'OTCMKTS'];
+      let success = false;
       
-      // NASDQで見つからない場合はNYSEを試す
-      try {
-        const response = await axios.get(url, {
-          headers: {
-            'User-Agent': USER_AGENT
-          }
-        });
+      for (const exchange of exchanges) {
+        if (success) break;
         
-        const $ = cheerio.load(response.data);
-        
-        // 現在値を取得
-        const priceText = $('.YMlKec.fxKbKc').text().trim();
-        if (priceText) {
-          // 重複した価格から最初の価格のみを抽出
-          const priceMatch = priceText.match(/\$[\d.,]+/);
-          const cleanPriceText = priceMatch ? priceMatch[0] : priceText;
+        try {
+          url = `https://www.google.com/finance/quote/${stockCode}:${exchange}`;
+          console.log(`Googleファイナンスから${exchange}の${stockCode}を取得試行...`);
           
-          // $記号とカンマを除去して数値に変換
-          numericPrice = parseFloat(cleanPriceText.replace(/\$|,/g, ''));
-          price = cleanPriceText;
-        }
-        
-        // 前日比を取得
-        const changeText = $('.P6K39c').text().trim();
-        if (changeText) {
-          // 重複した変化から最初の変化のみを抽出
-          const changeMatch = changeText.match(/[\+\-]?\$[\d.,]+/);
-          change = changeMatch ? changeMatch[0] : changeText;
-        }
-      } catch (error) {
-        // NASDQで失敗した場合はNYSEを試す
-        url = `https://www.google.com/finance/quote/${stockCode}:NYSE`;
-        const response = await axios.get(url, {
-          headers: {
-            'User-Agent': USER_AGENT
+          const response = await axios.get(url, {
+            headers: {
+              'User-Agent': USER_AGENT
+            },
+            timeout: 8000
+          });
+          
+          const $ = cheerio.load(response.data);
+          
+          // 現在値を取得（複数の方法を試す）
+          // 方法1: 主要な価格表示要素
+          let priceText = $('.YMlKec.fxKbKc').first().text().trim();
+          
+          // 方法2: 別の価格表示要素を探す
+          if (!priceText) {
+            $('.AHmHk').each((_, element) => {
+              const text = $(element).text().trim();
+              if (text && /\$[\d.,]+/.test(text)) {
+                priceText = text;
+                return false; // eachループを抜ける
+              }
+            });
           }
-        });
-        
-        const $ = cheerio.load(response.data);
-        
-        // 現在値を取得
-        const priceText = $('.YMlKec.fxKbKc').text().trim();
-        if (priceText) {
-          // $記号とカンマを除去して数値に変換
-          numericPrice = parseFloat(priceText.replace(/\$|,/g, ''));
-          price = priceText;
+          
+          // 方法3: ページ内の任意の要素から$記号付きの数値を探す
+          if (!priceText) {
+            $('div').each((_, element) => {
+              const text = $(element).text().trim();
+              if (text && /\$[\d.,]+/.test(text)) {
+                const match = text.match(/\$[\d.,]+/);
+                if (match) {
+                  priceText = match[0];
+                  return false; // eachループを抜ける
+                }
+              }
+            });
+          }
+          
+          if (priceText) {
+            // 価格文字列をクリーンアップ
+            // 1. 最初の$記号と数値のみを抽出（$56.690.11 → $56.69）
+            const cleanPriceMatch = priceText.match(/\$([\d,]+\.?\d{0,2})/);
+            const priceMatchDollar = priceText.match(/\$[\d.,]+/);
+            const cleanPriceText = cleanPriceMatch 
+              ? `$${cleanPriceMatch[1]}` 
+              : priceMatchDollar 
+                ? priceMatchDollar[0] 
+                : priceText;
+            
+            // $記号とカンマを除去して数値に変換
+            numericPrice = parseFloat(cleanPriceText.replace(/\$|,/g, ''));
+            price = cleanPriceText;
+            
+            // 前日比を取得
+            const changeText = $('.P6K39c').text().trim();
+            if (changeText) {
+              // 重複した変化から最初の変化のみを抽出
+              const changeMatch = changeText.match(/[\+\-]?\$[\d.,]+/);
+              change = changeMatch ? changeMatch[0] : changeText;
+            }
+            
+            success = true;
+            console.log(`Googleファイナンスから${exchange}の${stockCode}を取得成功: ${price}`);
+            break; // 取得成功したらループを抜ける
+          }
+        } catch (error) {
+          console.error(`Googleファイナンス(${exchange})データ取得エラー: ${stockCode}`, error);
+          // エラーは無視して次の取引所を試す
         }
-        
-        // 前日比を取得
-        const changeText = $('.P6K39c').text().trim();
-        if (changeText) {
-          change = changeText;
+      }
+      
+      // すべての取引所で失敗した場合はYahoo Financeの代替APIを試す
+      if (!success) {
+        try {
+          // Yahoo Finance APIの代替
+          url = `https://query1.finance.yahoo.com/v8/finance/chart/${stockCode}`;
+          const response = await axios.get(url, {
+            headers: {
+              'User-Agent': USER_AGENT
+            },
+            timeout: 5000
+          });
+          
+          if (response.data && 
+              response.data.chart && 
+              response.data.chart.result && 
+              response.data.chart.result[0] && 
+              response.data.chart.result[0].meta && 
+              response.data.chart.result[0].meta.regularMarketPrice) {
+            
+            numericPrice = response.data.chart.result[0].meta.regularMarketPrice;
+            price = `$${numericPrice.toLocaleString()}`;
+            
+            // 前日比も取得できる場合
+            if (response.data.chart.result[0].meta.previousClose) {
+              const previousClose = response.data.chart.result[0].meta.previousClose;
+              const changeValue = numericPrice - previousClose;
+              const changePercent = (changeValue / previousClose) * 100;
+              change = `${changeValue >= 0 ? '+' : ''}${changeValue.toFixed(2)} (${changePercent.toFixed(2)}%)`;
+            }
+            
+            success = true;
+            console.log(`Yahoo Finance APIから${stockCode}を取得成功: ${price}`);
+          }
+        } catch (yahooError) {
+          console.error(`Yahoo Finance API代替データ取得エラー: ${stockCode}`, yahooError);
         }
       }
     }

@@ -396,11 +396,11 @@ export default function Home() {
       setStockList(updatedList);
       console.log('情報更新完了: ' + new Date().toLocaleString());
       
-      // 更新後に合計評価額を再計算
+      // 更新後に合計評価額を再計算（タイムアウトを長くして確実に反映されるようにする）
       setTimeout(() => {
         calculateTotalValue();
         console.log('合計評価額再計算完了');
-      }, 100);
+      }, 500);
     } finally {
       setUpdatingPrices(false);
     }
