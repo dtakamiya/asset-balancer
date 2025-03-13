@@ -263,30 +263,25 @@ export default function Home() {
 
   // 株価を取得して評価額を計算
   const updateStockValues = async () => {
-    if (stockList.length === 0) {
-      return;
-    }
-
-    // 既に更新中の場合は処理をスキップ
-    if (loading) {
-      console.log('既に更新中のため、処理をスキップします');
-      return;
-    }
-
     setLoading(true);
-    const updateStartTime = new Date().toLocaleString();
-    console.log('株価更新開始: ' + updateStartTime);
-    
-    let updatedList = [...stockList];
     
     try {
-      // 為替レートを更新（自動更新時も毎回実行）
+      console.log('株価情報の更新を開始します...');
+      
+      // 現在のstockListを取得（最新の状態を確保）
+      const currentStockList = [...stockList];
+      console.log('更新前の株式リスト:', currentStockList.length + '件');
+      
+      // 更新用のリストを作成（ディープコピー）
+      const updatedList = JSON.parse(JSON.stringify(currentStockList));
+      
+      // 為替レートを取得
       await fetchExchangeRate();
       
+      // 各株式の情報を取得
       for (let i = 0; i < updatedList.length; i++) {
         const stock = updatedList[i];
-        // 元の種別情報を保存
-        const originalType = stock.type;
+        const originalType = stock.type; // 元の種別を保持
         
         try {
           console.log(`${stock.code}の情報を取得中...`);
@@ -322,42 +317,24 @@ export default function Home() {
             }
           } else {
             // 株式の場合
-            // 数字のみの銘柄コードは常に日本株として扱う
-            const isNumericCode = /^\d+$/.test(stock.code);
-            // 銘柄コードが数字のみの場合はisUSStockパラメータを無視
-            const isUS = isNumericCode ? false : (stock.currency === 'USD' || /^[A-Z]+$/.test(stock.code));
-            
-            console.log(`${stock.code}は米国株か: ${isUS}`);
-            
+            const isUS = stock.country === 'US';
             const response = await fetch(`/api/stock?code=${stock.code}&isUSStock=${isUS}`);
             const data = await response.json();
             
             if (response.ok) {
-              // 価格情報を取得
+              // 株価を取得
               let price = '';
               let numericPrice = 0;
               let priceInJPY = '';
+              let value = 0;
               
-              // 日本株の場合はGoogle Financeのデータを優先
-              if (isNumericCode && data.google && data.google.price) {
-                // Google Financeからの価格を使用
-                const googlePrice = data.google.price.replace('¥', '').replace(',', '').split('.')[0];
-                if (googlePrice) {
-                  numericPrice = parseFloat(googlePrice);
-                  price = `${numericPrice.toLocaleString()}円`;
-                  console.log(`Google Financeから取得した価格を使用: ${price}`);
-                }
-              }
-              
-              // Google Financeからデータが取得できなかった場合はYahoo!ファイナンスのデータを使用
-              if (numericPrice === 0 && data.yahoo && data.yahoo.numericPrice > 0) {
+              if (data.yahoo.numericPrice > 0) {
                 numericPrice = data.yahoo.numericPrice;
                 price = data.yahoo.price;
-                console.log(`Yahoo!ファイナンスから取得した価格を使用: ${price}`);
+              } else if (data.google.numericPrice > 0) {
+                numericPrice = data.google.numericPrice;
+                price = data.google.price;
               }
-              
-              // 通貨に応じた評価額計算
-              let value = 0;
               
               // 米国株の場合
               if (isUS) {
@@ -386,6 +363,8 @@ export default function Home() {
           }
         } catch (err) {
           console.error(`情報取得エラー (${stock.code}):`, err);
+          // エラーが発生しても元のデータは保持
+          updatedList[i] = { ...stock, lastUpdated: new Date().toLocaleString() };
         }
         
         // 各リクエスト間に少し遅延を入れる
@@ -397,14 +376,21 @@ export default function Home() {
       setLastUpdatedTime(updateEndTime);
       console.log('情報更新完了: ' + updateEndTime);
       
+      // 更新前後でデータ件数を比較（デバッグ用）
+      console.log(`更新前: ${currentStockList.length}件, 更新後: ${updatedList.length}件`);
+      
       // 株式リストを更新
       setStockList(updatedList);
+      
+      // 更新したデータを直接ローカルストレージに保存
+      localStorage.setItem('stockList', JSON.stringify(updatedList));
+      console.log('更新データをローカルストレージに直接保存しました:', updatedList.length + '件');
       
       // 合計評価額を直接計算して更新
       let totalJp = 0;
       let totalUs = 0;
       
-      updatedList.forEach(stock => {
+      updatedList.forEach((stock: StockItem) => {
         if (stock.value) {
           if (stock.country === 'US') {
             totalUs += stock.value;
@@ -746,22 +732,46 @@ export default function Home() {
               country: stock.country || 'JP',
               currency: stock.currency || 'JPY',
               type: stock.type || 'stock',
+              lastUpdated: new Date().toLocaleString(), // 最終更新時刻を追加
               ...stock // その他のプロパティを保持
             };
           });
           
+          // 更新前に現在のデータをバックアップ（デバッグ用）
+          const backupData = JSON.stringify(stockList);
+          console.log('更新前のデータ（バックアップ）:', backupData);
+          
+          // 新しいリストを作成（スプレッド演算子を使用）
           const updatedStockList = [...stockList, ...processedNewStocks];
+          
+          // 更新されたリストをステートに設定
           setStockList(updatedStockList);
           
-          // ローカルストレージに保存
+          // ローカルストレージに直接保存（useEffectを待たない）
           localStorage.setItem('stockList', JSON.stringify(updatedStockList));
+          console.log('インポートデータをローカルストレージに直接保存しました:', updatedStockList.length + '件');
           
           alert(`${processedNewStocks.length}件の銘柄データをインポートしました。`);
           
-          // 価格情報を更新
+          // 価格情報を更新（少し遅延を入れる）
           setTimeout(() => {
+            // 更新前に再度ローカルストレージから読み込む（念のため）
+            const savedData = localStorage.getItem('stockList');
+            if (savedData) {
+              try {
+                const parsedData = JSON.parse(savedData);
+                if (parsedData.length !== updatedStockList.length) {
+                  console.warn('ローカルストレージのデータが期待と異なります。再設定します。');
+                  localStorage.setItem('stockList', JSON.stringify(updatedStockList));
+                }
+              } catch (e) {
+                console.error('ローカルストレージ検証エラー:', e);
+              }
+            }
+            
+            // 株価情報を更新
             updateStockValues();
-          }, 500);
+          }, 1000); // 1秒後に実行
         } else {
           alert('インポートされたデータはすべて既に登録されています。');
         }
